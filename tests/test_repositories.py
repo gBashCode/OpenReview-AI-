@@ -1,4 +1,4 @@
-"""Tests for repository management endpoints and business logic."""
+"""Tests for repository management endpoints, tenant isolation, and semantic indexing."""
 
 import pytest
 from httpx import AsyncClient
@@ -40,3 +40,34 @@ async def test_register_and_list_repository(async_client: AsyncClient):
     dup_res = await async_client.post("/api/v1/repositories", json=payload)
     assert dup_res.status_code == 409
     assert dup_res.json()["error"]["code"] == "CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_repository_semantic_indexing(async_client: AsyncClient):
+    # Register repo
+    payload = {
+        "github_repo_id": 112233,
+        "owner": "octocat",
+        "name": "vector-search-repo",
+        "default_branch": "main",
+    }
+    repo_res = await async_client.post("/api/v1/repositories", json=payload)
+    assert repo_res.status_code == 201
+    repo_id = repo_res.json()["id"]
+
+    # Trigger semantic code indexing
+    idx_payload = {
+        "commit_sha": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+        "branch": "main",
+    }
+    idx_res = await async_client.post(f"/api/v1/repositories/{repo_id}/indexes", json=idx_payload)
+    assert idx_res.status_code == 201
+    idx_data = idx_res.json()
+    assert idx_data["repository_id"] == repo_id
+    assert idx_data["total_chunks"] == 156
+    assert idx_data["total_symbols"] == 312
+
+    # List indexes
+    list_idx_res = await async_client.get(f"/api/v1/repositories/{repo_id}/indexes")
+    assert list_idx_res.status_code == 200
+    assert len(list_idx_res.json()) >= 1

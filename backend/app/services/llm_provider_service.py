@@ -79,7 +79,7 @@ class MockLLMProvider(BaseLLMProvider):
                         line_number=45,
                         title="Ensure Redis Client Connection Re-use",
                         message="Consider utilizing a persistent connection pool instead of opening new sockets per ping.",
-                        suggested_patch=None,
+                        suggested_patch="@@ -45,2 +45,4 @@\n- redis_client = Redis.from_url(settings.REDIS_URL)\n+ pool = ConnectionPool.from_url(settings.REDIS_URL, max_connections=20)\n+ redis_client = Redis(connection_pool=pool)",
                     )
                 ],
             )

@@ -1,32 +1,39 @@
 """Pull Request Endpoints."""
 
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.models.pull_request import PullRequest
+from app.core.exceptions import NotFoundError
+from app.database.session import get_db
+from app.pull_requests.models import PullRequest
+from app.pull_requests.service import PullRequestService
+from app.reviews.models import Review
 from app.schemas.pull_request import PullRequestCreate, PullRequestRead
 from app.schemas.review import ReviewRead
-from app.services.review_service import ReviewService
-from app.core.dependencies import get_review_service
-from app.core.exceptions import NotFoundError
 
 router = APIRouter(prefix="/pull-requests", tags=["Pull Requests"])
 
 
+def get_pr_service(session: AsyncSession = Depends(get_db)) -> PullRequestService:
+    return PullRequestService(session)
+
+
 @router.get("", response_model=List[PullRequestRead], summary="List pull requests")
 async def list_pull_requests(
-    repository_id: str = Query(None),
+    repository_id: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     session: AsyncSession = Depends(get_db),
 ) -> List[PullRequestRead]:
-    query = select(PullRequest).order_by(PullRequest.updated_at.desc()).offset(skip).limit(limit)
+    stmt = select(PullRequest).order_by(PullRequest.updated_at.desc()).offset(skip).limit(limit)
     if repository_id:
-        query = query.where(PullRequest.repository_id == repository_id)
-    result = await session.execute(query)
-    return list(result.scalars().all())
+        stmt = stmt.where(PullRequest.repository_id == repository_id)
+    if state:
+        stmt = stmt.where(PullRequest.state == state)
+    result = await session.execute(stmt)
+    return [PullRequestRead.model_validate(pr) for pr in result.scalars().all()]
 
 
 @router.post(
@@ -55,7 +62,7 @@ async def create_pull_request(
     session.add(pr)
     await session.commit()
     await session.refresh(pr)
-    return pr
+    return PullRequestRead.model_validate(pr)
 
 
 @router.get("/{pr_id}", response_model=PullRequestRead, summary="Get PR by ID")
@@ -63,16 +70,18 @@ async def get_pull_request(
     pr_id: str,
     session: AsyncSession = Depends(get_db),
 ) -> PullRequestRead:
-    result = await session.execute(select(PullRequest).where(PullRequest.id == pr_id))
-    pr = result.scalar_one_or_none()
+    stmt = select(PullRequest).where(PullRequest.id == pr_id)
+    pr = (await session.execute(stmt)).scalar_one_or_none()
     if not pr:
         raise NotFoundError("PullRequest", pr_id)
-    return pr
+    return PullRequestRead.model_validate(pr)
 
 
 @router.get("/{pr_id}/reviews", response_model=List[ReviewRead], summary="List reviews for PR")
 async def list_pr_reviews(
     pr_id: str,
-    service: ReviewService = Depends(get_review_service),
+    session: AsyncSession = Depends(get_db),
 ) -> List[ReviewRead]:
-    return await service.list_reviews_for_pr(pr_id)
+    stmt = select(Review).where(Review.pull_request_id == pr_id).order_by(Review.created_at.desc())
+    result = await session.execute(stmt)
+    return [ReviewRead.model_validate(r) for r in result.scalars().all()]

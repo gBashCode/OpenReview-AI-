@@ -19,7 +19,7 @@ class ReviewRepo(BaseRepository[Review]):
         """Fetch review along with all nested comments and findings."""
         result = await self.session.execute(
             select(Review)
-            .options(selectinload(Review.comments))
+            .options(selectinload(Review.findings))
             .where(Review.id == review_id)
         )
         return result.scalar_one_or_none()

@@ -1,8 +1,15 @@
-"""SQLAlchemy declarative Base and registry."""
+"""Database module alias forwarding to app.database."""
 
-from sqlalchemy.orm import DeclarativeBase
+from app.database.base import Base, UUIDMixin, TimestampMixin, CompatibleVector
+from app.database.session import engine, AsyncSessionLocal, get_db, check_db_connectivity
 
-
-class Base(DeclarativeBase):
-    """Base class for all SQLAlchemy 2.0 ORM models."""
-    pass
+__all__ = [
+    "Base",
+    "UUIDMixin",
+    "TimestampMixin",
+    "CompatibleVector",
+    "engine",
+    "AsyncSessionLocal",
+    "get_db",
+    "check_db_connectivity",
+]

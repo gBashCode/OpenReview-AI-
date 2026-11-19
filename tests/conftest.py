@@ -6,11 +6,11 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from app.core.config import Settings, get_settings
-from app.db.base import Base
-from app.db.session import get_db
+from app.database.base import Base
+import app.models  # Ensures all 16 models are loaded
+from app.database.session import get_db
 from app.main import create_application
 
-# Use an in-memory SQLite database for isolated unit/integration tests
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 test_settings = Settings(
@@ -18,7 +18,7 @@ test_settings = Settings(
     DEBUG=True,
     DATABASE_URL=TEST_DB_URL,
     REDIS_URL="redis://localhost:6379/15",
-    SECRET_KEY="test-secret-key",
+    SECRET_KEY="test-super-secret-key-for-unit-testing",
 )
 
 
@@ -55,7 +55,6 @@ async def db_session(test_engine) -> AsyncSession:
 async def async_client(test_engine, db_session) -> AsyncClient:
     app = create_application()
 
-    # Override get_db dependency to point to the test session
     async def override_get_db():
         yield db_session
 
@@ -65,3 +64,23 @@ async def async_client(test_engine, db_session) -> AsyncClient:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_token(async_client: AsyncClient) -> str:
+    """Registers a test user and returns an active JWT bearer token."""
+    reg_payload = {
+        "email": "developer@openreview.ai",
+        "username": "dev-lead",
+        "full_name": "Dev Lead",
+        "password": "SecurePassword123!",
+        "organization_name": "Acme Engineering",
+    }
+    response = await async_client.post("/api/v1/auth/register", json=reg_payload)
+    data = response.json()
+    return data["token"]["access_token"]
+
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_headers(auth_token: str) -> dict:
+    return {"Authorization": f"Bearer {auth_token}"}

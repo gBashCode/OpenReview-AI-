@@ -1,11 +1,28 @@
 """API v1 Router Aggregator."""
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, pull_requests, repositories, reviews
+from app.api.v1.endpoints import (
+    analytics,
+    auth,
+    autofix,
+    findings,
+    health,
+    organizations,
+    pull_requests,
+    repositories,
+    reviews,
+    users,
+)
 
 api_v1_router = APIRouter()
 
 api_v1_router.include_router(health.router)
+api_v1_router.include_router(auth.router)
+api_v1_router.include_router(users.router)
+api_v1_router.include_router(organizations.router)
 api_v1_router.include_router(repositories.router)
 api_v1_router.include_router(pull_requests.router)
 api_v1_router.include_router(reviews.router)
+api_v1_router.include_router(findings.router)
+api_v1_router.include_router(autofix.router)
+api_v1_router.include_router(analytics.router)

@@ -21,8 +21,9 @@ from app.core.exceptions import (
     validation_exception_handler,
 )
 from app.core.logging import get_logger, setup_logging
-from app.db.base import Base
-from app.db.session import check_db_connectivity, engine
+import app.models  # Ensure all 16 models are registered with Base.metadata
+from app.database.base import Base
+from app.database.session import check_db_connectivity, engine
 
 settings = get_settings()
 setup_logging(log_level=settings.LOG_LEVEL, log_format=settings.LOG_FORMAT)
