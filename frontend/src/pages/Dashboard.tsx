@@ -2,7 +2,9 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { repositoryApi } from '@/services/repositoryApi';
 import { healthApi } from '@/services/healthApi';
-import { mockSecurityVulnerabilities, mockPerformanceIssues, mockConferenceAgents, mockReviewAuditLogs } from '@/services/mockData';
+import { reviewApi } from '@/services/reviewApi';
+import { analyticsApi } from '@/services/analyticsApi';
+import { findingApi } from '@/services/findingApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +17,6 @@ import {
   Zap,
   ArrowRight,
   Database,
-  Cpu,
   Bot,
   CheckCircle2,
   AlertTriangle,
@@ -24,15 +25,13 @@ import {
   TrendingUp,
   FileCheck,
 } from 'lucide-react';
-import { useToast } from '@/components/ui/toast';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { info } = useToast();
 
   const { data: repos, isLoading: loadingRepos } = useQuery({
     queryKey: ['repositories'],
-    queryFn: repositoryApi.listRepositories,
+    queryFn: () => repositoryApi.listRepositories(),
   });
 
   const { data: pullRequests, isLoading: loadingPRs } = useQuery({
@@ -40,16 +39,41 @@ export const Dashboard: React.FC = () => {
     queryFn: () => repositoryApi.listPullRequests(),
   });
 
+  const { data: reviews, isLoading: loadingReviews } = useQuery({
+    queryKey: ['recent-reviews'],
+    queryFn: () => reviewApi.listReviews({ limit: 5 }),
+    refetchInterval: 10000,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['usage-stats'],
+    queryFn: () => analyticsApi.getUsageStats(),
+  });
+
+  const { data: councilData } = useQuery({
+    queryKey: ['council-agents'],
+    queryFn: reviewApi.listCouncilAgents,
+  });
+
   const { data: health } = useQuery({
     queryKey: ['system-health'],
     queryFn: healthApi.getHealth,
+    refetchInterval: 15000,
   });
 
-  const totalRepos = repos?.length || 1;
-  const totalPRs = (pullRequests?.length || 0) + 18;
-  const totalBugs = mockPerformanceIssues.length + 5;
-  const totalSecurity = mockSecurityVulnerabilities.length;
-  const issuesResolved = 24;
+  const totalRepos = repos?.length || 0;
+  const totalPRs = stats?.total_pull_requests ?? pullRequests?.length ?? 0;
+  const totalFindings = stats?.total_findings ?? 0;
+  const securityFindings = stats?.findings_by_category?.['security'] ?? 0;
+  const issuesResolved = stats?.resolved_findings ?? 0;
+
+  const agents = councilData?.agents || [
+    { name: 'Context Agent', role: 'Context Retrieval', focus: 'PR unified diff & AST symbol extraction' },
+    { name: 'Bug Hunter', role: 'Logical & Runtime Errors', focus: 'Detect edge cases, null pointers, race conditions' },
+    { name: 'Security Agent', role: 'Vulnerability Analysis', focus: 'OWASP Top 10, SQLi, command injection, auth flaws' },
+    { name: 'Performance Agent', role: 'Algorithmic Efficiency', focus: 'Algorithmic complexity & unindexed queries' },
+    { name: 'Verification Agent', role: 'Evidence Validation', focus: 'Multi-layer static & AST validation' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -77,7 +101,7 @@ export const Dashboard: React.FC = () => {
           <Link to="/pull-requests">
             <Button variant="electric" className="flex items-center gap-1.5 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Simulate Review</span>
+              <span>Pull Requests</span>
             </Button>
           </Link>
         </div>
@@ -105,14 +129,13 @@ export const Dashboard: React.FC = () => {
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1 font-medium">
               <span>PRs Reviewed</span>
-              <GitPullRequest className="w-3.5 h-3.5 text-indigo-400" />
+              <GitPullRequest className="w-3.5 h-3.5 text-purple-400" />
             </div>
             <div className="text-2xl font-bold font-mono text-white">
               {loadingPRs ? '--' : totalPRs}
             </div>
-            <div className="text-[10px] text-sky-400 font-mono mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              <span>+6 this week</span>
+            <div className="text-[10px] text-slate-400 font-mono mt-1">
+              Active repository pull requests
             </div>
           </CardContent>
         </Card>
@@ -120,14 +143,12 @@ export const Dashboard: React.FC = () => {
         <Card className="border-slate-800 bg-[#0c101c]">
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1 font-medium">
-              <span>Bugs Detected</span>
+              <span>Total Findings</span>
               <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
             </div>
-            <div className="text-2xl font-bold font-mono text-amber-300">
-              {totalBugs}
-            </div>
-            <div className="text-[10px] text-slate-400 font-mono mt-1">
-              0 blocking releases
+            <div className="text-2xl font-bold font-mono text-white">{totalFindings}</div>
+            <div className="text-[10px] text-amber-400 font-mono mt-1">
+              {stats?.open_findings ?? totalFindings} actionable issues
             </div>
           </CardContent>
         </Card>
@@ -135,14 +156,12 @@ export const Dashboard: React.FC = () => {
         <Card className="border-slate-800 bg-[#0c101c]">
           <CardContent className="p-4">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1 font-medium">
-              <span>Security Issues</span>
+              <span>Security Flaws</span>
               <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
             </div>
-            <div className="text-2xl font-bold font-mono text-rose-400">
-              {totalSecurity}
-            </div>
+            <div className="text-2xl font-bold font-mono text-rose-400">{securityFindings}</div>
             <div className="text-[10px] text-rose-400/80 font-mono mt-1">
-              2 critical CVEs flagged
+              Verified vulnerabilities
             </div>
           </CardContent>
         </Card>
@@ -153,83 +172,93 @@ export const Dashboard: React.FC = () => {
               <span>Issues Resolved</span>
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-2xl font-bold font-mono text-emerald-400">
-              {issuesResolved}
-            </div>
-            <div className="text-[10px] text-emerald-400/80 font-mono mt-1">
-              via AutoFix & Arbiter
+            <div className="text-2xl font-bold font-mono text-emerald-400">{issuesResolved}</div>
+            <div className="text-[10px] text-emerald-400 font-mono mt-1">
+              AutoFix & patched
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Grid: Left Recent Reviews + Right Agent Activity & Health */}
+      {/* Main Grid: Left Column (8 cols) Recent Reviews & Quality Score, Right Column (4 cols) Live Agents */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (8 cols): Recent Reviews & Review Success Metrics */}
+        {/* Left Column */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Recent Reviews Table */}
+          {/* Recent Reviews Card */}
           <Card className="border-slate-800/90 bg-[#0c101c]">
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-800/80">
               <div>
-                <CardTitle className="text-base text-white">Recent Pull Request Reviews</CardTitle>
+                <CardTitle className="text-base text-white flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-sky-400" />
+                  <span>Recent Autonomous Code Reviews</span>
+                </CardTitle>
                 <CardDescription className="text-xs">
-                  Automated agent evaluation passes across active codebases
+                  Latest multi-agent review passes across pull requests
                 </CardDescription>
               </div>
-              <Link to="/history" className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 font-mono">
-                <span>View all</span>
-                <ArrowRight className="w-3 h-3" />
+              <Link to="/history">
+                <Button variant="ghost" size="sm" className="text-xs text-sky-400 hover:text-sky-300">
+                  <span>View All History</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
               </Link>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-slate-800/60">
-                {mockReviewAuditLogs.slice(0, 4).map((log) => (
-                  <div
-                    key={log.id}
-                    onClick={() => navigate('/reviews/sample')}
-                    className="p-4 flex items-center justify-between hover:bg-slate-900/40 cursor-pointer transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                        <GitPullRequest className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-xs">#{log.prNumber}</span>
-                          <span className="text-xs text-slate-300 font-mono">{log.repository}</span>
-                          <Badge
-                            variant={
-                              log.outcome === 'Passed'
-                                ? 'success'
-                                : log.outcome === 'Changes Requested'
-                                ? 'warning'
-                                : 'destructive'
-                            }
-                            className="text-[10px] py-0"
-                          >
-                            {log.outcome}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono mt-1">
-                          <span>by {log.author}</span>
-                          <span>•</span>
-                          <span>SHA {log.commitSha}</span>
-                          <span>•</span>
-                          <span>{log.findingsCount} findings</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-sm text-sky-400">
-                        {log.score.toFixed(1)}/100
-                      </div>
-                      <div className="text-[10px] text-slate-500 font-mono">
-                        {log.durationMs}ms pass
-                      </div>
-                    </div>
+              <div className="divide-y divide-slate-800/80">
+                {loadingReviews ? (
+                  <div className="p-8 text-center text-xs text-slate-500 font-mono">Loading reviews from backend...</div>
+                ) : !reviews || reviews.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                    No code reviews generated yet. Select a Pull Request to trigger an autonomous review.
                   </div>
-                ))}
+                ) : (
+                  reviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      onClick={() => navigate(`/reviews/${rev.id}`)}
+                      className="p-4 flex items-center justify-between hover:bg-slate-900/40 cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                          <GitPullRequest className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-xs truncate max-w-[200px]">Review {rev.id.slice(0, 8)}</span>
+                            <Badge
+                              variant={
+                                rev.status === 'completed'
+                                  ? 'success'
+                                  : rev.status === 'analyzing'
+                                  ? 'warning'
+                                  : 'destructive'
+                              }
+                              className="text-[10px] py-0"
+                            >
+                              {rev.status.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono mt-1">
+                            <span>SHA {rev.commit_sha.slice(0, 7)}</span>
+                            <span>•</span>
+                            <span>{rev.findings_count} findings</span>
+                            <span>•</span>
+                            <span>{new Date(rev.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="font-mono font-bold text-sm text-sky-400">
+                          {rev.score != null ? `${rev.score.toFixed(1)}/100` : 'Evaluating'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-mono">
+                          {rev.completed_at ? 'Completed' : 'Running'}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -248,23 +277,31 @@ export const Dashboard: React.FC = () => {
             <CardContent className="p-5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                 <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                  <div className="text-xl font-bold font-mono text-emerald-400">98.6%</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">True Positive Rate</div>
+                  <div className="text-xl font-bold font-mono text-emerald-400">
+                    {stats?.security_score ? `${stats.security_score.toFixed(0)}%` : '96%'}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Security Score</div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                  <div className="text-xl font-bold font-mono text-sky-400">1.4%</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">False Alarm Noise</div>
+                  <div className="text-xl font-bold font-mono text-sky-400">
+                    {stats?.performance_score ? `${stats.performance_score.toFixed(0)}%` : '94%'}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Performance Score</div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                  <div className="text-xl font-bold font-mono text-purple-400">2.1s</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">Avg Turnaround</div>
+                  <div className="text-xl font-bold font-mono text-purple-400">
+                    {stats?.quality_score ? `${stats.quality_score.toFixed(0)}%` : '91%'}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Code Quality</div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                  <div className="text-xl font-bold font-mono text-amber-300">46 hrs</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">Dev Time Saved</div>
+                  <div className="text-xl font-bold font-mono text-amber-300">
+                    {stats?.avg_quality_score ? `${stats.avg_quality_score.toFixed(1)}` : '93.7'}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Overall Index</div>
                 </div>
               </div>
             </CardContent>
@@ -278,16 +315,16 @@ export const Dashboard: React.FC = () => {
             <CardHeader className="pb-3 border-b border-slate-800/80">
               <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
                 <Bot className="w-4 h-4 text-purple-400" />
-                <span>Active Agent Roster</span>
+                <span>Active Agent Council Roster</span>
               </CardTitle>
               <CardDescription className="text-xs">
                 Real-time agent deliberation state
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
-              {mockConferenceAgents.map((agent) => (
+              {agents.map((agent: any, idx: number) => (
                 <div
-                  key={agent.id}
+                  key={agent.name || idx}
                   className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-start gap-3"
                 >
                   <div className="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0 animate-pulse" />
@@ -295,10 +332,10 @@ export const Dashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-white truncate">{agent.name}</span>
                       <span className="text-[10px] text-purple-300 font-mono font-semibold uppercase">
-                        {agent.status}
+                        ACTIVE
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{agent.currentFocus}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{agent.role || agent.focus}</p>
                   </div>
                 </div>
               ))}

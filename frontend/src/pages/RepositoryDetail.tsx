@@ -1,56 +1,103 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { repositoryApi } from '@/services/repositoryApi';
+import { reviewApi } from '@/services/reviewApi';
+import { PullRequest } from '@/types/repository';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   GitFork,
   GitPullRequest,
   ArrowLeft,
   ShieldCheck,
-  ShieldAlert,
   Zap,
-  Sliders,
   CheckCircle2,
   ExternalLink,
-  Lock,
-  GitBranch,
+  RefreshCw,
+  Search,
+  Code2,
+  Layers,
+  Sparkles,
+  ArrowRight,
+  Database,
+  Clock,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 export const RepositoryDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { success, info } = useToast();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { success, error, info } = useToast();
 
   const [blockOnCritical, setBlockOnCritical] = useState(true);
   const [requireHighQuality, setRequireHighQuality] = useState(true);
   const [autoFixPrs, setAutoFixPrs] = useState(false);
-  const [semanticIndexing, setSemanticIndexing] = useState(true);
+  const [symbolSearch, setSymbolSearch] = useState('');
 
-  const { data: repo, isLoading } = useQuery({
+  // 1. Fetch Repository Details
+  const { data: repo, isLoading: isLoadingRepo } = useQuery({
     queryKey: ['repository', id],
     queryFn: () => repositoryApi.getRepository(id!),
     enabled: !!id,
   });
 
-  const { data: pullRequests } = useQuery({
+  // 2. Fetch Pull Requests for this Repo
+  const { data: pullRequests = [], isLoading: isLoadingPrs } = useQuery<PullRequest[]>({
     queryKey: ['pull-requests', id],
     queryFn: () => repositoryApi.listPullRequests(id),
+    enabled: !!id,
   });
 
-  if (isLoading) {
+  // 3. Fetch Indexing Runs
+  const { data: indexes = [] } = useQuery({
+    queryKey: ['repository-indexes', id],
+    queryFn: () => repositoryApi.listIndexes(id!),
+    enabled: !!id,
+  });
+
+  // 4. Fetch Architecture Summary
+  const { data: architecture } = useQuery({
+    queryKey: ['repository-architecture', id],
+    queryFn: () => repositoryApi.getArchitecture(id!),
+    enabled: !!id,
+  });
+
+  // 5. Fetch Symbols Search
+  const { data: symbolsData } = useQuery({
+    queryKey: ['repository-symbols', id, symbolSearch],
+    queryFn: () => repositoryApi.listSymbols(id!, symbolSearch || undefined),
+    enabled: !!id,
+  });
+
+  // Trigger Re-indexing Mutation
+  const reindexMutation = useMutation({
+    mutationFn: () => repositoryApi.triggerIndex(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['repository-indexes', id] });
+      queryClient.invalidateQueries({ queryKey: ['repository-architecture', id] });
+      success('Indexing Initiated', 'Tree-sitter AST extraction and vector embedding pipeline triggered.');
+    },
+    onError: (err: any) => {
+      error('Indexing Failed', err.message || 'Could not trigger repository indexing');
+    },
+  });
+
+  if (isLoadingRepo) {
     return (
-      <div className="p-12 text-center text-slate-500 font-mono text-xs">
-        Loading repository metadata...
+      <div className="p-16 text-center text-slate-500 font-mono text-xs">
+        Loading repository metadata and intelligence graph...
       </div>
     );
   }
 
-  const repoName = repo?.full_name || 'google-deepmind/openreview-ai';
+  const latestIndex = indexes && indexes.length > 0 ? indexes[0] : null;
+  const symbols = Array.isArray(symbolsData) ? symbolsData : [];
 
   return (
     <div className="space-y-6">
@@ -70,25 +117,42 @@ export const RepositoryDetail: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white tracking-tight">{repoName}</h1>
-                <Badge variant="success">Active Monitoring</Badge>
+                <h1 className="text-xl font-bold text-white tracking-tight">
+                  {repo?.full_name || 'Repository'}
+                </h1>
+                <Badge variant={repo?.is_active ? 'success' : 'outline'}>
+                  {repo?.is_active ? 'Active Monitoring' : 'Inactive'}
+                </Badge>
               </div>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Default branch: {repo?.default_branch || 'main'} • GitHub Repo ID: {repo?.github_repo_id || 1001}
+                Default branch: {repo?.default_branch || 'main'} • GitHub Repo ID: {repo?.github_repo_id || 'N/A'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <a
-              href={`https://github.com/${repoName}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 bg-[#0e1422] transition"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => reindexMutation.mutate()}
+              isLoading={reindexMutation.isPending}
+              className="flex items-center gap-1.5 text-xs text-sky-400"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-              <span>View on GitHub</span>
-            </a>
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Trigger Indexing</span>
+            </Button>
+
+            {repo?.clone_url && (
+              <a
+                href={repo.clone_url.replace('.git', '')}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 bg-[#0e1422] transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                <span>View on GitHub</span>
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -96,43 +160,86 @@ export const RepositoryDetail: React.FC = () => {
       {/* Tabs navigation */}
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">Overview & Indexing</TabsTrigger>
+          <TabsTrigger value="prs">Pull Requests ({pullRequests.length})</TabsTrigger>
+          <TabsTrigger value="symbols">Codebase Symbols</TabsTrigger>
           <TabsTrigger value="rules">Review Policies & Gates</TabsTrigger>
-          <TabsTrigger value="prs">Pull Requests ({pullRequests?.length || 2})</TabsTrigger>
           <TabsTrigger value="webhook">Webhook Status</TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Overview */}
+        {/* Tab 1: Overview & Indexing */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="border-slate-800 bg-[#0c101c]">
               <CardContent className="p-4">
-                <div className="text-xs text-slate-400 font-medium mb-1">Total PRs Inspected</div>
-                <div className="text-2xl font-bold font-mono text-white">42</div>
-                <p className="text-[11px] text-slate-500 mt-1">100% automated coverage</p>
+                <div className="text-xs text-slate-400 font-medium mb-1">Files Indexed</div>
+                <div className="text-2xl font-bold font-mono text-white">
+                  {latestIndex?.files_indexed ?? 0}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">Incremental tree-sitter AST parsing</p>
               </CardContent>
             </Card>
 
             <Card className="border-slate-800 bg-[#0c101c]">
               <CardContent className="p-4">
-                <div className="text-xs text-slate-400 font-medium mb-1">Average Quality Score</div>
-                <div className="text-2xl font-bold font-mono text-emerald-400">92.4/100</div>
-                <p className="text-[11px] text-slate-500 mt-1">+4.2% since OpenReview AI installed</p>
+                <div className="text-xs text-slate-400 font-medium mb-1">AST Symbols Extracted</div>
+                <div className="text-2xl font-bold font-mono text-emerald-400">
+                  {latestIndex?.symbols_indexed ?? 0}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">Classes, methods, and functions</p>
               </CardContent>
             </Card>
 
             <Card className="border-slate-800 bg-[#0c101c]">
               <CardContent className="p-4">
-                <div className="text-xs text-slate-400 font-medium mb-1">Vulnerabilities Blocked</div>
-                <div className="text-2xl font-bold font-mono text-rose-400">7</div>
-                <p className="text-[11px] text-slate-500 mt-1">0 criticals merged into production</p>
+                <div className="text-xs text-slate-400 font-medium mb-1">Vector Chunks</div>
+                <div className="text-2xl font-bold font-mono text-purple-400">
+                  {latestIndex?.chunks_indexed ?? 0}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">PostgreSQL pgvector embeddings</p>
               </CardContent>
             </Card>
           </div>
 
+          {/* Architecture Summary */}
+          {architecture && (
+            <Card className="border-slate-800 bg-[#0c101c]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-sky-400" />
+                  <span>Repository Architecture Overview</span>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  High-level modules and system relationships synthesized from repository index
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-xs text-slate-300 space-y-3 font-sans">
+                <p className="leading-relaxed whitespace-pre-wrap">{architecture.summary}</p>
+                {architecture.entrypoints && architecture.entrypoints.length > 0 && (
+                  <div>
+                    <span className="text-slate-400 font-mono text-[11px] block mb-1">Entrypoints:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {architecture.entrypoints.map((ep: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="font-mono text-[10px]">
+                          {ep}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Indexing status card */}
           <Card className="border-slate-800 bg-[#0c101c]">
             <CardHeader>
-              <CardTitle className="text-sm font-semibold text-white">Repository Semantics & Vector Index</CardTitle>
+              <CardTitle className="text-sm font-semibold text-white flex items-center justify-between">
+                <span>Repository Semantics & Vector Index</span>
+                <Badge variant={latestIndex?.status === 'completed' ? 'success' : 'warning'}>
+                  {latestIndex?.status || 'Active'}
+                </Badge>
+              </CardTitle>
               <CardDescription className="text-xs">
                 Codebase structure indexed into PostgreSQL pgvector for contextual agent grounding
               </CardDescription>
@@ -140,12 +247,14 @@ export const RepositoryDetail: React.FC = () => {
             <CardContent className="space-y-3 text-xs">
               <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-white">pgvector Semantic Indexing</div>
-                  <div className="text-slate-400 text-[11px]">
-                    1,536-dimensional embeddings stored for architecture conventions and coding guidelines
+                  <div className="font-semibold text-white">Commit SHA Indexed</div>
+                  <div className="text-slate-400 font-mono text-[11px]">
+                    {latestIndex?.commit_sha ? latestIndex.commit_sha.substring(0, 10) : 'HEAD'}
                   </div>
                 </div>
-                <Badge variant="purple">Synchronized</Badge>
+                <div className="text-[11px] text-slate-500 font-mono">
+                  {latestIndex?.completed_at ? new Date(latestIndex.completed_at).toLocaleString() : 'Recent'}
+                </div>
               </div>
 
               <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
@@ -161,7 +270,114 @@ export const RepositoryDetail: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab 2: Review Policies & Gates */}
+        {/* Tab 2: Pull Requests */}
+        <TabsContent value="prs" className="space-y-3">
+          <Card className="border-slate-800 bg-[#0c101c]">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-white">Repository Pull Requests</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pullRequests.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs font-mono">
+                  No pull requests registered for this repository.
+                </div>
+              ) : (
+                pullRequests.map((pr) => (
+                  <div
+                    key={pr.id}
+                    className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white text-xs">#{pr.pr_number}</span>
+                        <span className="text-xs text-slate-300 font-semibold">{pr.title}</span>
+                        <Badge
+                          variant={pr.state === 'open' ? 'success' : 'outline'}
+                          className="capitalize text-[10px]"
+                        >
+                          {pr.state}
+                        </Badge>
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                        {pr.head_branch} &rarr; {pr.base_branch} • author: {pr.author_username}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="electric"
+                      onClick={async () => {
+                        const rev = await reviewApi.createReview(pr.id, pr.head_sha);
+                        navigate(`/reviews/${rev.id}`);
+                      }}
+                      className="text-xs flex items-center gap-1"
+                    >
+                      <span>Inspect Review</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: Codebase Symbols */}
+        <TabsContent value="symbols" className="space-y-4">
+          <Card className="border-slate-800 bg-[#0c101c]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-white flex items-center justify-between">
+                <span>AST Symbol Index</span>
+                <span className="text-xs text-slate-400 font-normal">
+                  {symbols.length} symbols found
+                </span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Search functions, classes, and methods parsed via Tree-sitter for exact reference retrieval
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                <Input
+                  placeholder="Filter symbols by identifier, class, or function name..."
+                  value={symbolSearch}
+                  onChange={(e) => setSymbolSearch(e.target.value)}
+                  className="pl-9 h-8 text-xs bg-slate-950"
+                />
+              </div>
+
+              <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                {symbols.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs font-mono">
+                    No symbols found matching query.
+                  </div>
+                ) : (
+                  symbols.map((sym: any) => (
+                    <div
+                      key={sym.id}
+                      className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80 flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Code2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                        <div>
+                          <span className="font-mono font-semibold text-white">{sym.name}</span>
+                          <span className="text-[11px] text-slate-500 font-mono ml-2">
+                            {sym.file_path}:{sym.start_line}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="font-mono text-[10px] capitalize">
+                        {sym.kind || 'symbol'}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 4: Review Policies & Gates */}
         <TabsContent value="rules" className="space-y-4">
           <Card className="border-slate-800 bg-[#0c101c]">
             <CardHeader>
@@ -222,53 +438,7 @@ export const RepositoryDetail: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* Tab 3: Pull Requests */}
-        <TabsContent value="prs" className="space-y-3">
-          <Card className="border-slate-800 bg-[#0c101c]">
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold text-white">Recent Pull Requests</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-xs">#42</span>
-                    <span className="text-xs text-slate-300 font-semibold">feat: add autonomous multi-agent reviewer</span>
-                    <Badge variant="warning">Changes Requested</Badge>
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    head: feature/security-agent • author: octocat
-                  </div>
-                </div>
-                <Link to="/reviews/sample">
-                  <Button size="sm" variant="electric">
-                    Inspect Review
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-xs">#41</span>
-                    <span className="text-xs text-slate-300 font-semibold">fix: database connection pool configuration</span>
-                    <Badge variant="success">Passed</Badge>
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    head: fix/pool-settings • author: alexrivera
-                  </div>
-                </div>
-                <Link to="/reviews/sample">
-                  <Button size="sm" variant="outline">
-                    View Run
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Tab 4: Webhook Status */}
+        {/* Tab 5: Webhook Status */}
         <TabsContent value="webhook" className="space-y-4">
           <Card className="border-slate-800 bg-[#0c101c]">
             <CardHeader>
@@ -276,14 +446,14 @@ export const RepositoryDetail: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-                <span className="text-slate-300">Webhook URL:</span>
-                <span className="font-mono text-sky-400">https://api.openreview.ai/api/v1/webhooks/github</span>
+                <span className="text-slate-300">Webhook Target Endpoint:</span>
+                <span className="font-mono text-sky-400">http://127.0.0.1:8000/api/v1/webhooks/github</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-                <span className="text-slate-300">Last Ping Delivery:</span>
+                <span className="text-slate-300">Active Monitoring:</span>
                 <span className="text-emerald-400 font-mono flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>200 OK (3 mins ago)</span>
+                  <span>Enabled (pull_request.opened, synchronize, reopened)</span>
                 </span>
               </div>
             </CardContent>

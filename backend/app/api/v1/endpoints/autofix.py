@@ -1,7 +1,7 @@
 """Autofix Patch and Sandbox Verification Endpoints."""
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.autofix.schemas import (
     CommitPatchRequest,
@@ -24,6 +24,17 @@ router = APIRouter(prefix="/autofix", tags=["AutoFix"])
 
 def get_autofix_service(session: AsyncSession = Depends(get_db)) -> AutofixService:
     return AutofixService(session)
+
+
+@router.get("", response_model=List[PatchRead], summary="List all autofix patches")
+async def list_patches(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    service: AutofixService = Depends(get_autofix_service),
+) -> List[PatchRead]:
+    """Lists all generated patches across reviews."""
+    patches = await service.list_all(skip=skip, limit=limit)
+    return [PatchRead.model_validate(p) for p in patches]
 
 
 @router.post(

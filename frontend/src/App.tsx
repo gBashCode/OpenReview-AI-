@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from './components/ui/toast';
+import { AuthProvider } from './context/AuthContext';
 import { AppLayout } from './components/layout/AppLayout';
 
 // 16 Full Application Pages
@@ -37,7 +38,8 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
           <Routes>
             {/* Public Marketing & Auth Pages */}
             <Route path="/landing" element={<Landing />} />
@@ -64,6 +66,7 @@ export const App: React.FC = () => {
             </Route>
           </Routes>
         </BrowserRouter>
+        </AuthProvider>
       </ToastProvider>
     </QueryClientProvider>
   );

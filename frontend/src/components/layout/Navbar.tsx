@@ -19,10 +19,12 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useToast } from '../ui/toast';
+import { useAuth } from '../../context/AuthContext';
 
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { info, success } = useToast();
+  const { user, logout } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -184,17 +186,17 @@ export const Navbar: React.FC = () => {
             className="flex items-center gap-2 p-1 pl-2 rounded-lg border border-slate-800 bg-[#0e1422] hover:border-slate-700 transition"
           >
             <div className="w-5 h-5 rounded-full bg-gradient-to-r from-sky-400 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-slate-950 font-mono">
-              OR
+              {(user?.full_name || user?.email || 'OR').slice(0, 2).toUpperCase()}
             </div>
-            <span className="text-xs text-slate-200 font-medium hidden sm:inline">Lead Architect</span>
+            <span className="text-xs text-slate-200 font-medium hidden sm:inline">{user?.full_name || 'Lead Architect'}</span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
 
           {showUserMenu && (
             <div className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-800 bg-[#0e1422] p-2 shadow-2xl shadow-black/80 z-50 text-xs animate-in fade-in duration-100">
               <div className="px-2 py-1.5 border-b border-slate-800 mb-1">
-                <div className="font-semibold text-white">Lead Architect</div>
-                <div className="text-[10px] text-slate-400 font-mono truncate">architect@openreview.ai</div>
+                <div className="font-semibold text-white">{user?.full_name || 'Lead Architect'}</div>
+                <div className="text-[10px] text-slate-400 font-mono truncate">{user?.email || 'architect@openreview.ai'}</div>
               </div>
               <button
                 onClick={() => {
@@ -208,9 +210,10 @@ export const Navbar: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  navigate('/login');
+                  logout();
                   setShowUserMenu(false);
                   success('Logged Out', 'Returned to sign-in portal.');
+                  navigate('/login');
                 }}
                 className="w-full text-left px-2 py-1.5 rounded hover:bg-rose-500/10 text-rose-400 flex items-center gap-2"
               >

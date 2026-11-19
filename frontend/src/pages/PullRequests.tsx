@@ -32,7 +32,10 @@ export const PullRequests: React.FC = () => {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'merged'>('all');
+  const [repoFilter, setRepoFilter] = useState<string>('all');
   const [showCreate, setShowCreate] = useState(false);
+  const [analyzingPrId, setAnalyzingPrId] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<any | null>(null);
   const [selectedRepoId, setSelectedRepoId] = useState('');
   const [prNumber, setPrNumber] = useState(43);
   const [title, setTitle] = useState('feat: add async pgvector similarity search');
@@ -40,12 +43,12 @@ export const PullRequests: React.FC = () => {
 
   const { data: repos } = useQuery<Repository[]>({
     queryKey: ['repositories'],
-    queryFn: repositoryApi.listRepositories,
+    queryFn: () => repositoryApi.listRepositories(),
   });
 
   const { data: pullRequests, isLoading } = useQuery<PullRequest[]>({
-    queryKey: ['pull-requests'],
-    queryFn: () => repositoryApi.listPullRequests(),
+    queryKey: ['pull-requests', repoFilter],
+    queryFn: () => repositoryApi.listPullRequests(repoFilter !== 'all' ? repoFilter : undefined),
   });
 
   const createPrMutation = useMutation({
@@ -85,6 +88,19 @@ export const PullRequests: React.FC = () => {
     });
   };
 
+  const handleAnalyzePR = async (prId: string) => {
+    setAnalyzingPrId(prId);
+    try {
+      const res = await repositoryApi.analyzePullRequest(prId);
+      setAnalysisResult(res);
+      success('PR Impact Analysis Completed', `Risk Score: ${res.risk_score || 0}/100, Complexity: ${res.complexity_score || 0}/100`);
+    } catch (err: any) {
+      error('Analysis Failed', err.message || 'Could not analyze PR diff');
+    } finally {
+      setAnalyzingPrId(null);
+    }
+  };
+
   const filteredPRs = pullRequests?.filter((pr) => {
     const matchesSearch =
       pr.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,14 +135,29 @@ export const PullRequests: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
-          <Input
-            placeholder="Search by title, author, or #PR number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-8 text-xs bg-[#0b101c]"
-          />
+        <div className="flex items-center gap-2 flex-1 max-w-lg">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+            <Input
+              placeholder="Search by title, author, or #PR number..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-8 text-xs bg-[#0b101c]"
+            />
+          </div>
+
+          <select
+            value={repoFilter}
+            onChange={(e) => setRepoFilter(e.target.value)}
+            className="h-8 rounded-md border border-slate-700 bg-[#0e1422] px-2.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          >
+            <option value="all">All Repositories</option>
+            {repos?.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.full_name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-1.5 bg-[#0e1422] p-1 rounded-lg border border-slate-800 text-xs">
@@ -198,7 +229,17 @@ export const PullRequests: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleAnalyzePR(pr.id)}
+                    isLoading={analyzingPrId === pr.id}
+                    className="text-xs font-medium"
+                  >
+                    Analyze Impact
+                  </Button>
+
                   <Button
                     size="sm"
                     variant="electric"
@@ -218,6 +259,74 @@ export const PullRequests: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Analysis Result Dialog */}
+      <Dialog open={!!analysisResult} onOpenChange={(open) => !open && setAnalysisResult(null)}>
+        <DialogHeader>
+          <DialogTitle>PR Impact & Risk Analysis</DialogTitle>
+          <DialogDescription>
+            Autonomous static diff inspection, risk scoring, and review agent routing plan.
+          </DialogDescription>
+        </DialogHeader>
+
+        {analysisResult && (
+          <div className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 block text-[11px]">Explainable Risk Score</span>
+                <span className="text-xl font-bold font-mono text-amber-400">
+                  {analysisResult.risk_score ?? 0}/100
+                </span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 block text-[11px]">Complexity Score</span>
+                <span className="text-xl font-bold font-mono text-sky-400">
+                  {analysisResult.complexity_score ?? 0}/100
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-slate-400 font-semibold block mb-1">Executive Summary</span>
+              <p className="p-2.5 rounded bg-slate-950 border border-slate-800 text-slate-300">
+                {analysisResult.pr_summary || 'No summary available.'}
+              </p>
+            </div>
+
+            {analysisResult.risk_factors && analysisResult.risk_factors.length > 0 && (
+              <div>
+                <span className="text-slate-400 font-semibold block mb-1">Risk Factors</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {analysisResult.risk_factors.map((factor: string, idx: number) => (
+                    <Badge key={idx} variant="warning" className="text-[10px]">
+                      {factor}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {analysisResult.recommended_agents && analysisResult.recommended_agents.length > 0 && (
+              <div>
+                <span className="text-slate-400 font-semibold block mb-1">Recommended Review Agents</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {analysisResult.recommended_agents.map((agent: string, idx: number) => (
+                    <Badge key={idx} variant="purple" className="text-[10px]">
+                      {agent}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setAnalysisResult(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </Dialog>
 
       {/* Modal Dialog for Simulating PR */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>

@@ -43,6 +43,40 @@ class FindingService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all()), total
 
+    async def list_all(
+        self,
+        review_id: Optional[str] = None,
+        category: Optional[str] = None,
+        severity: Optional[str] = None,
+        is_resolved: Optional[bool] = None,
+        search: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> Tuple[List[Finding], int]:
+        """Lists findings across reviews with rich filtering, search, and pagination."""
+        stmt = select(Finding).options(selectinload(Finding.patches))
+        if review_id:
+            stmt = stmt.where(Finding.review_id == review_id)
+        if category:
+            stmt = stmt.where(Finding.category.ilike(f"%{category}%"))
+        if severity:
+            stmt = stmt.where(Finding.severity.ilike(f"%{severity}%"))
+        if is_resolved is not None:
+            stmt = stmt.where(Finding.is_resolved == is_resolved)
+        if search:
+            stmt = stmt.where(
+                (Finding.title.ilike(f"%{search}%"))
+                | (Finding.message.ilike(f"%{search}%"))
+                | (Finding.file_path.ilike(f"%{search}%"))
+            )
+
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = (await self.session.execute(count_stmt)).scalar() or 0
+
+        stmt = stmt.order_by(Finding.created_at.desc()).offset(skip).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all()), total
+
     async def get_by_id(self, finding_id: str) -> Finding:
         """Retrieves a finding by UUID."""
         stmt = (

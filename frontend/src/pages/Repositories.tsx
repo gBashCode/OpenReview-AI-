@@ -35,7 +35,7 @@ export const Repositories: React.FC = () => {
 
   const { data: repos, isLoading } = useQuery<Repository[]>({
     queryKey: ['repositories'],
-    queryFn: repositoryApi.listRepositories,
+    queryFn: () => repositoryApi.listRepositories(),
   });
 
   const createRepoMutation = useMutation({

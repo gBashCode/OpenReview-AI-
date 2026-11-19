@@ -63,6 +63,18 @@ class AutofixService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_all(self, skip: int = 0, limit: int = 50) -> List[Patch]:
+        """Lists all patches with test runs and finding loaded."""
+        stmt = (
+            select(Patch)
+            .options(selectinload(Patch.test_runs), selectinload(Patch.finding))
+            .order_by(Patch.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def create_patch(self, data: PatchCreate) -> Patch:
         """Generates a patch record with unified diff and initial test run (compatibility)."""
         stmt_f = select(Finding).where(Finding.id == data.finding_id)

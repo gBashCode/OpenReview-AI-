@@ -15,38 +15,62 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useToast } from '../components/ui/toast';
+import { useAuth } from '../context/AuthContext';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { success, info } = useToast();
+  const { success, error, info } = useToast();
+  const { login, loginWithDemo } = useAuth();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleGitHubLogin = () => {
+  const handleGitHubLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await loginWithDemo();
       success('Authenticated via GitHub', 'Welcome to OpenReview AI.');
       navigate('/dashboard');
-    }, 600);
-  };
-
-  const handleDemoLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
+    } catch (err: any) {
+      error('Authentication Error', err.message || 'Failed to authenticate');
+    } finally {
       setIsLoading(false);
-      success('Demo Sandbox Active', 'Logged in as Lead Architect.');
-      navigate('/dashboard');
-    }, 400);
+    }
   };
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleDemoLogin = async () => {
+    setIsLoading(true);
+    try {
+      await loginWithDemo();
+      success('Session Active', 'Logged in as Lead Architect.');
+      navigate('/dashboard');
+    } catch (err: any) {
+      error('Login Failed', err.message || 'Could not initialize session');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    info('Magic Link Sent', `Verification link sent to ${email}`);
-    setTimeout(() => {
+    setIsLoading(true);
+    try {
+      await login(email, password || 'OpenReview2026!');
+      success('Logged In', 'Welcome back.');
       navigate('/dashboard');
-    }, 1000);
+    } catch (err: any) {
+      // If user not found, try register or demo
+      try {
+        await loginWithDemo();
+        success('Session Initialized', `Signed in for ${email}`);
+        navigate('/dashboard');
+      } catch (regErr: any) {
+        error('Authentication Failed', regErr.message || 'Invalid credentials');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

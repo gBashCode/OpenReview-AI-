@@ -1,8 +1,11 @@
 """Code Review and Multi-Agent Conference Endpoints."""
 
+import asyncio
 from datetime import datetime, timezone
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import AgentDiscussion, ReviewAgent
@@ -137,6 +140,56 @@ async def get_review(
         findings=finding_reads,
         comments=comment_reads,
     )
+
+
+@router.get("/{review_id}/events", summary="Stream live review progress and status updates via SSE")
+async def stream_review_events(
+    review_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Server-Sent Events endpoint streaming real-time review progress, agent activity, and status changes."""
+    async def event_generator():
+        last_status = None
+        last_count = -1
+        for _ in range(60):  # Stream updates for up to 60 seconds
+            stmt = select(Review).where(Review.id == review_id)
+            review = (await session.execute(stmt)).scalar_one_or_none()
+            if not review:
+                yield f"event: error\ndata: {json.dumps({'error': 'Review not found'})}\n\n"
+                break
+
+            current_status = review.status
+            findings_count = review.findings_count
+
+            if current_status != last_status or findings_count != last_count:
+                last_status = current_status
+                last_count = findings_count
+                payload = {
+                    "review_id": review.id,
+                    "status": current_status,
+                    "score": review.score,
+                    "findings_count": findings_count,
+                    "started_at": review.started_at.isoformat() if review.started_at else None,
+                    "completed_at": review.completed_at.isoformat() if review.completed_at else None,
+                }
+                yield f"event: status_update\ndata: {json.dumps(payload)}\n\n"
+
+            if current_status in ("completed", "failed"):
+                yield f"event: completed\ndata: {json.dumps({'status': current_status})}\n\n"
+                break
+
+            await asyncio.sleep(1.0)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 
 
 @router.post(
