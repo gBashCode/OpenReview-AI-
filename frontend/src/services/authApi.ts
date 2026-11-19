@@ -17,12 +17,20 @@ export const authApi = {
     email: string,
     password: string,
     fullName?: string,
-    organizationName?: string
+    organizationName?: string,
+    username?: string
   ): Promise<AuthResponse> => {
+    const computedUsername =
+      username ||
+      email
+        .split('@')[0]
+        .replace(/[^a-zA-Z0-9_]/g, '_')
+        .slice(0, 30);
     const res = await apiRequest<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
         email,
+        username: computedUsername,
         password,
         full_name: fullName,
         organization_name: organizationName,

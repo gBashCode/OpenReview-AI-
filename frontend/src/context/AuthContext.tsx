@@ -49,26 +49,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await authApi.login('architect@openreview.ai', 'OpenReview2026!');
       setUser(res.user);
     } catch {
-      try {
-        // If demo account does not exist in local DB, register it
-        const regRes = await authApi.register(
-          'architect@openreview.ai',
-          'OpenReview2026!',
-          'Lead Architect',
-          'OpenReview Engineering'
-        );
-        setUser(regRes.user);
-      } catch {
-        // Fallback demo user
-        const fallbackUser: User = {
-          id: 'demo-lead-architect',
-          email: 'architect@openreview.ai',
-          full_name: 'Lead Architect',
-          role: 'admin',
-          created_at: new Date().toISOString(),
-        };
-        setUser(fallbackUser);
-      }
+      // If demo account does not exist in local DB, register it with username
+      const regRes = await authApi.register(
+        'architect@openreview.ai',
+        'OpenReview2026!',
+        'Lead Architect',
+        'OpenReview Engineering',
+        'architect'
+      );
+      setUser(regRes.user);
     }
   };
 

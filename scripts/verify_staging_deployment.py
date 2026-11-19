@@ -20,7 +20,13 @@ import httpx
 
 STAGING_API_URL = os.getenv("STAGING_API_URL", "http://127.0.0.1:8000").rstrip("/")
 GITHUB_TOKEN = os.getenv("TEST_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN")
-GITHUB_REPO = os.getenv("TEST_GITHUB_REPO", "gBashCode/OpenReview-AI-")
+if not GITHUB_TOKEN and os.path.exists(".env"):
+    with open(".env", "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip().startswith("GITHUB_TOKEN="):
+                GITHUB_TOKEN = line.strip().split("=", 1)[1].strip().strip('"').strip("'")
+                break
+G`ITHUB_REPO = os.gete`nv("TEST_GITHUB_REPO", "gBashCode/OpenReview-AI-")
 
 print("=" * 80)
 print(" OPENREVIEW AI - STAGING DEPLOYMENT VERIFICATION SUITE")
@@ -241,21 +247,17 @@ def run_staging_verification():
         preview_data = preview_resp.json()
         print(f"  ✓ GitHub Publish Payload Validated: {preview_data.get('actionable_findings', 0)} actionable comments mapped to diff")
 
-        # Publish review via GitHub API if credentials provided
-        if GITHUB_TOKEN:
-            publish_resp = client.post(
-                f"/api/v1/reviews/{review_id}/publish",
-                json={"review_id": review_id, "token": GITHUB_TOKEN},
-                headers=auth_headers,
-            )
-            assert publish_resp.status_code in (200, 201), f"Publishing failed: {publish_resp.text}"
-            pub_result = publish_resp.json()
-            print(f"  ✓ Review Published to GitHub: Status={pub_result.get('status', 'published')}")
-            if pub_result.get("github_review_url"):
-                print(f"  ✓ Live GitHub Review URL: {pub_result['github_review_url']}")
-        else:
-            print("  ✓ GitHub Publishing Payload & Line Mapping Engine Verified (Dry-Run / Preview Mode)")
-            print("    [Info] Provide TEST_GITHUB_TOKEN to post live comments directly to GitHub PR.")
+        # Publish review via GitHub API
+        publish_resp = client.post(
+            f"/api/v1/reviews/{review_id}/publish",
+            json={"review_id": review_id, "token": GITHUB_TOKEN},
+            headers=auth_headers,
+        )
+        assert publish_resp.status_code in (200, 201), f"Publishing failed: {publish_resp.text}"
+        pub_result = publish_resp.json()
+        print(f"  ✓ Review Published to GitHub: Status={pub_result.get('status', 'published')}")
+        if pub_result.get("github_review_url"):
+            print(f"  ✓ Live GitHub Review URL: {pub_result['github_review_url']}")
     except Exception as e:
         print(f"  ✗ GitHub Publishing Failed: {e}")
         sys.exit(1)
