@@ -93,7 +93,9 @@ async def test_auth_me_authorized(async_client: AsyncClient, auth_headers: dict)
 
 
 @pytest.mark.asyncio
-async def test_github_oauth_url(async_client: AsyncClient):
+async def test_github_oauth_url(async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "GITHUB_CLIENT_ID", "mock_client_id")
     res = await async_client.get("/api/v1/auth/github/url?redirect_uri=http://localhost:5173/auth/callback")
     assert res.status_code == 200
     data = res.json()
