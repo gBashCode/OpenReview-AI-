@@ -13,10 +13,15 @@ from app.agents.models import AgentDiscussion, ReviewAgent
 from app.agents.schemas import AgentDiscussionCreate, AgentDiscussionRead, ReviewAgentRead
 from app.agents.service import AgentService
 from app.autofix.models import Patch
+from app.core.dependencies import get_current_user_optional
 from app.database.session import get_db
 from app.findings.models import Finding
 from app.findings.schemas import FindingCreate, FindingRead
 from app.findings.service import FindingService
+from app.organizations.models import OrganizationMember
+from app.pull_requests.models import PullRequest
+from app.repositories.models import Repository
+from app.users.models import User
 from app.github.publishing_engine import (
     GitHubDiffLineValidator,
     GitHubReviewFormatter,
@@ -84,15 +89,42 @@ async def list_reviews(
     status_filter: Optional[str] = Query(None, alias="status"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    session: AsyncSession = Depends(get_db),
     service: ReviewService = Depends(get_review_service),
 ) -> List[ReviewRead]:
-    reviews, _ = await service.list_reviews(
-        pull_request_id=pull_request_id,
-        status=status_filter,
-        skip=skip,
-        limit=limit,
+    if not current_user:
+        return []
+
+    stmt_m = select(OrganizationMember.organization_id).where(OrganizationMember.user_id == current_user.id)
+    user_org_ids = list((await session.execute(stmt_m)).scalars().all())
+    if not user_org_ids:
+        return []
+
+    stmt_repos = select(Repository.id).where(Repository.organization_id.in_(user_org_ids))
+    allowed_repo_ids = list((await session.execute(stmt_repos)).scalars().all())
+    if not allowed_repo_ids:
+        return []
+
+    stmt_prs = select(PullRequest.id).where(PullRequest.repository_id.in_(allowed_repo_ids))
+    allowed_pr_ids = list((await session.execute(stmt_prs)).scalars().all())
+    if not allowed_pr_ids:
+        return []
+
+    if pull_request_id and pull_request_id not in allowed_pr_ids:
+        return []
+
+    target_pr_ids = [pull_request_id] if pull_request_id else allowed_pr_ids
+    stmt = (
+        select(Review)
+        .where(Review.pull_request_id.in_(target_pr_ids))
+        .order_by(Review.created_at.desc())
     )
-    return [ReviewRead.model_validate(r) for r in reviews]
+    if status_filter:
+        stmt = stmt.where(Review.status == status_filter)
+    stmt = stmt.offset(skip).limit(limit)
+    res = await session.execute(stmt)
+    return [ReviewRead.model_validate(r) for r in res.scalars().all()]
 
 
 @router.get("/{review_id}", response_model=ReviewDetailRead, summary="Get review details & findings")

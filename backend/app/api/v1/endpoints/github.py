@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
-from app.core.dependencies import get_current_user_optional
+from app.core.dependencies import get_current_user, get_current_user_optional
 from app.core.exceptions import AuthenticationError, NotFoundError
 from app.core.logging import get_logger
 from app.database.session import get_db
@@ -221,6 +221,49 @@ async def sync_repositories(
         organization_id=target_org_id,
         installation_id=installation_id,
         installation_db_id=inst.id if inst else None,
+    )
+    return [RepositoryRead.model_validate(r) for r in synced]
+
+
+@router.post(
+    "/sync-my-repos",
+    response_model=List[RepositoryRead],
+    summary="Synchronize repositories for the authenticated GitHub user",
+)
+async def sync_my_repositories(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+    repo_service: GitHubRepositoryService = Depends(get_repo_service),
+) -> List[RepositoryRead]:
+    """Uses the signed-in user's personal GitHub OAuth token to sync their own repositories."""
+    if not current_user.github_access_token:
+        raise AuthenticationError("No GitHub OAuth access token found for your account. Please sign in with GitHub.")
+
+    stmt_m = select(OrganizationMember.organization_id).where(OrganizationMember.user_id == current_user.id)
+    org_id = (await session.execute(stmt_m)).scalars().first()
+    if not org_id:
+        import re
+        clean_slug = re.sub(r"[^a-z0-9-]", "", current_user.username.lower())[:30]
+        user_org = Organization(
+            name=f"{current_user.full_name or current_user.username}'s Workspace",
+            slug=f"{clean_slug}-workspace-{current_user.id[:6]}",
+            plan="team",
+            max_repos=50,
+        )
+        session.add(user_org)
+        await session.flush()
+        membership = OrganizationMember(
+            organization_id=user_org.id,
+            user_id=current_user.id,
+            role="admin",
+        )
+        session.add(membership)
+        await session.flush()
+        org_id = user_org.id
+
+    synced = await repo_service.sync_user_oauth_repositories(
+        organization_id=org_id,
+        user_access_token=current_user.github_access_token,
     )
     return [RepositoryRead.model_validate(r) for r in synced]
 

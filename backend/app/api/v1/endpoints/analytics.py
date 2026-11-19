@@ -6,8 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics.schemas import AuditLogRead, UsageStatsRead
 from app.analytics.service import AnalyticsService
+from app.core.dependencies import get_current_user_optional
 from app.database.session import get_db
-from app.organizations.models import Organization
+from app.organizations.models import Organization, OrganizationMember
+from app.users.models import User
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -20,13 +22,17 @@ def get_analytics_service(session: AsyncSession = Depends(get_db)) -> AnalyticsS
 async def get_usage_statistics(
     organization_id: Optional[str] = Header(None, alias="X-Organization-ID"),
     query_org_id: Optional[str] = Query(None, alias="organization_id"),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     session: AsyncSession = Depends(get_db),
     service: AnalyticsService = Depends(get_analytics_service),
 ) -> UsageStatsRead:
     target_org_id = organization_id or query_org_id
+    if not target_org_id and current_user:
+        stmt_m = select(OrganizationMember.organization_id).where(OrganizationMember.user_id == current_user.id)
+        target_org_id = (await session.execute(stmt_m)).scalars().first()
+
     if not target_org_id:
-        stmt_org = select(Organization.id).order_by(Organization.created_at)
-        target_org_id = (await session.execute(stmt_org)).scalars().first() or "default-org"
+        target_org_id = "empty-org"
 
     return await service.get_usage_stats(target_org_id)
 
@@ -38,13 +44,17 @@ async def list_audit_logs(
     action: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     session: AsyncSession = Depends(get_db),
     service: AnalyticsService = Depends(get_analytics_service),
 ) -> List[AuditLogRead]:
     target_org_id = organization_id or query_org_id
+    if not target_org_id and current_user:
+        stmt_m = select(OrganizationMember.organization_id).where(OrganizationMember.user_id == current_user.id)
+        target_org_id = (await session.execute(stmt_m)).scalars().first()
+
     if not target_org_id:
-        stmt_org = select(Organization.id).order_by(Organization.created_at)
-        target_org_id = (await session.execute(stmt_org)).scalars().first() or "default-org"
+        return []
 
     logs, _ = await service.list_audit_logs(
         organization_id=target_org_id,

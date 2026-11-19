@@ -6,13 +6,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.analyzer.schemas import PRAnalysisRequest, PRAnalysisResult
 from app.analyzer.service import AnalyzerService
+from app.core.dependencies import get_current_user_optional
 from app.core.exceptions import NotFoundError
 from app.database.session import get_db
+from app.organizations.models import OrganizationMember
 from app.pull_requests.models import PullRequest
 from app.pull_requests.service import PullRequestService
+from app.repositories.models import Repository
 from app.reviews.models import Review
 from app.schemas.pull_request import PullRequestCreate, PullRequestRead
 from app.schemas.review import ReviewRead
+from app.users.models import User
 
 router = APIRouter(prefix="/pull-requests", tags=["Pull Requests"])
 
@@ -31,10 +35,33 @@ async def list_pull_requests(
     state: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     session: AsyncSession = Depends(get_db),
 ) -> List[PullRequestRead]:
-    stmt = select(PullRequest).order_by(PullRequest.updated_at.desc()).offset(skip).limit(limit)
+    if not current_user:
+        return []
+
+    # Get user's accessible organizations
+    stmt_m = select(OrganizationMember.organization_id).where(OrganizationMember.user_id == current_user.id)
+    user_org_ids = list((await session.execute(stmt_m)).scalars().all())
+    if not user_org_ids:
+        return []
+
+    stmt_repos = select(Repository.id).where(Repository.organization_id.in_(user_org_ids))
+    allowed_repo_ids = list((await session.execute(stmt_repos)).scalars().all())
+    if not allowed_repo_ids:
+        return []
+
+    stmt = (
+        select(PullRequest)
+        .where(PullRequest.repository_id.in_(allowed_repo_ids))
+        .order_by(PullRequest.updated_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
     if repository_id:
+        if repository_id not in allowed_repo_ids:
+            return []
         stmt = stmt.where(PullRequest.repository_id == repository_id)
     if state:
         stmt = stmt.where(PullRequest.state == state)

@@ -1,6 +1,7 @@
 """GitHub Repository Management and Permission Validation Service."""
 
 from typing import List, Optional
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundError, PermissionDeniedError
@@ -105,6 +106,110 @@ class GitHubRepositoryService:
                 )
                 self.session.add(new_repo)
                 synced.append(new_repo)
+
+        await self.session.commit()
+        return synced
+
+    async def sync_user_oauth_repositories(
+        self,
+        organization_id: str,
+        user_access_token: str,
+    ) -> List[Repository]:
+        """Synchronizes repositories accessible by the user's personal OAuth token."""
+        headers = {
+            "Authorization": f"Bearer {user_access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "OpenReviewAI-App/1.0",
+        }
+        synced: List[Repository] = []
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                "https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member",
+                headers=headers,
+            )
+            if resp.status_code != 200:
+                logger.error(f"Failed to fetch user repositories from GitHub [{resp.status_code}]: {resp.text}")
+                raise PermissionDeniedError(f"Could not retrieve user repositories: {resp.text}")
+
+            repos_data = resp.json()
+            for r in repos_data:
+                try:
+                    async with self.session.begin_nested():
+                        full_name = r.get("full_name")
+                        if not full_name:
+                            continue
+                        owner, name = full_name.split("/", 1)
+                        gh_id = r.get("id")
+
+                        stmt = select(Repository).where(
+                            (Repository.organization_id == organization_id)
+                            & (
+                                (Repository.github_repo_id == gh_id)
+                                | (Repository.full_name == full_name)
+                            )
+                        )
+                        existing = (await self.session.execute(stmt)).scalar_one_or_none()
+                        if existing:
+                            existing.github_repo_id = gh_id
+                            existing.default_branch = r.get("default_branch", "main")
+                            existing.description = r.get("description")
+                            existing.clone_url = r.get("clone_url")
+                            existing.is_active = True
+                            synced.append(existing)
+                            repo_id = existing.id
+                        else:
+                            new_repo = Repository(
+                                organization_id=organization_id,
+                                github_repo_id=gh_id,
+                                owner=owner,
+                                name=name,
+                                full_name=full_name,
+                                default_branch=r.get("default_branch", "main"),
+                                description=r.get("description"),
+                                clone_url=r.get("clone_url"),
+                                is_active=True,
+                            )
+                            self.session.add(new_repo)
+                            await self.session.flush()
+                            synced.append(new_repo)
+                            repo_id = new_repo.id
+
+                        try:
+                            pr_resp = await client.get(
+                                f"https://api.github.com/repos/{owner}/{name}/pulls?state=all&per_page=10",
+                                headers=headers,
+                            )
+                            if pr_resp.status_code == 200:
+                                from app.pull_requests.models import PullRequest
+                                for pr_item in pr_resp.json():
+                                    pr_num = pr_item.get("number")
+                                    if not pr_num:
+                                        continue
+                                    stmt_pr = select(PullRequest).where(
+                                        (PullRequest.repository_id == repo_id)
+                                        & (PullRequest.pr_number == pr_num)
+                                    )
+                                    existing_pr = (await self.session.execute(stmt_pr)).scalar_one_or_none()
+                                    if not existing_pr:
+                                        new_pr = PullRequest(
+                                            repository_id=repo_id,
+                                            github_pr_id=pr_item.get("id"),
+                                            pr_number=pr_num,
+                                            title=pr_item.get("title") or f"PR #{pr_num}",
+                                            description=pr_item.get("body"),
+                                            state=pr_item.get("state", "open"),
+                                            head_branch=pr_item.get("head", {}).get("ref", "branch"),
+                                            base_branch=pr_item.get("base", {}).get("ref", "main"),
+                                            head_sha=pr_item.get("head", {}).get("sha", "0" * 40),
+                                            base_sha=pr_item.get("base", {}).get("sha", "0" * 40),
+                                            author_username=pr_item.get("user", {}).get("login", "unknown") if pr_item.get("user") else "unknown",
+                                        )
+                                        self.session.add(new_pr)
+                        except Exception as pr_err:
+                            logger.warning(f"Failed to fetch PRs for {full_name}: {pr_err}")
+                except Exception as repo_err:
+                    logger.warning(f"Failed to sync repository {r.get('full_name')}: {repo_err}")
 
         await self.session.commit()
         return synced

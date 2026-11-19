@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_register_and_list_repository(async_client: AsyncClient):
+async def test_register_and_list_repository(async_client: AsyncClient, auth_headers: dict):
     payload = {
         "github_repo_id": 998877,
         "owner": "google-deepmind",
@@ -16,7 +16,7 @@ async def test_register_and_list_repository(async_client: AsyncClient):
     }
 
     # Register
-    create_res = await async_client.post("/api/v1/repositories", json=payload)
+    create_res = await async_client.post("/api/v1/repositories", json=payload, headers=auth_headers)
     assert create_res.status_code == 201
     created = create_res.json()
     assert created["full_name"] == "google-deepmind/openreview-ai"
@@ -25,19 +25,19 @@ async def test_register_and_list_repository(async_client: AsyncClient):
     repo_id = created["id"]
 
     # Retrieve by ID
-    get_res = await async_client.get(f"/api/v1/repositories/{repo_id}")
+    get_res = await async_client.get(f"/api/v1/repositories/{repo_id}", headers=auth_headers)
     assert get_res.status_code == 200
     assert get_res.json()["name"] == "openreview-ai"
 
     # Listing
-    list_res = await async_client.get("/api/v1/repositories")
+    list_res = await async_client.get("/api/v1/repositories", headers=auth_headers)
     assert list_res.status_code == 200
     repos = list_res.json()
     assert len(repos) >= 1
     assert any(r["id"] == repo_id for r in repos)
 
     # Conflict on duplicate registration
-    dup_res = await async_client.post("/api/v1/repositories", json=payload)
+    dup_res = await async_client.post("/api/v1/repositories", json=payload, headers=auth_headers)
     assert dup_res.status_code == 409
     assert dup_res.json()["error"]["code"] == "CONFLICT"
 

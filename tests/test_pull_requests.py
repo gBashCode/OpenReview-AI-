@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_pull_request_lifecycle(async_client: AsyncClient):
+async def test_pull_request_lifecycle(async_client: AsyncClient, auth_headers: dict):
     # Register repository first
     repo_res = await async_client.post(
         "/api/v1/repositories",
@@ -15,6 +15,7 @@ async def test_pull_request_lifecycle(async_client: AsyncClient):
             "name": "fastapi-demo",
             "default_branch": "main",
         },
+        headers=auth_headers,
     )
     assert repo_res.status_code == 201
     repo_id = repo_res.json()["id"]
@@ -30,7 +31,7 @@ async def test_pull_request_lifecycle(async_client: AsyncClient):
         "base_sha": "0000999988887777666655554444333322221111",
         "author_username": "sec-dev",
     }
-    pr_res = await async_client.post("/api/v1/pull-requests", json=pr_payload)
+    pr_res = await async_client.post("/api/v1/pull-requests", json=pr_payload, headers=auth_headers)
     assert pr_res.status_code == 201
     pr_data = pr_res.json()
     assert pr_data["pr_number"] == 42
@@ -38,12 +39,12 @@ async def test_pull_request_lifecycle(async_client: AsyncClient):
     pr_id = pr_data["id"]
 
     # Get by ID
-    get_res = await async_client.get(f"/api/v1/pull-requests/{pr_id}")
+    get_res = await async_client.get(f"/api/v1/pull-requests/{pr_id}", headers=auth_headers)
     assert get_res.status_code == 200
     assert get_res.json()["author_username"] == "sec-dev"
 
     # List PRs filtered by repo
-    list_res = await async_client.get(f"/api/v1/pull-requests?repository_id={repo_id}")
+    list_res = await async_client.get(f"/api/v1/pull-requests?repository_id={repo_id}", headers=auth_headers)
     assert list_res.status_code == 200
     prs = list_res.json()
     assert len(prs) == 1

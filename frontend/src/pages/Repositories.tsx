@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { repositoryApi } from '@/services/repositoryApi';
+import { githubApi } from '@/services/githubApi';
 import { Repository, RepositoryCreateInput } from '@/types/repository';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import {
   Trash2,
   Search,
   ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
@@ -57,6 +59,18 @@ export const Repositories: React.FC = () => {
     },
   });
 
+  const syncMyReposMutation = useMutation({
+    mutationFn: () => githubApi.syncMyRepositories(),
+    onSuccess: (synced) => {
+      queryClient.invalidateQueries({ queryKey: ['repositories'] });
+      queryClient.invalidateQueries({ queryKey: ['pull-requests'] });
+      success('GitHub Repositories Synchronized', `Synchronized ${synced.length} repository(s) from your GitHub account.`);
+    },
+    onError: (err: any) => {
+      error('Failed to Sync Repositories', err.message || 'Ensure your GitHub account is authorized.');
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!owner || !name) return;
@@ -94,6 +108,16 @@ export const Repositories: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button
+            onClick={() => syncMyReposMutation.mutate()}
+            disabled={syncMyReposMutation.isPending}
+            variant="outline"
+            className="flex items-center gap-2 text-xs font-mono border-[#36312a] text-[#c9bfaf] hover:text-[#f5f0e6]"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#d4a853] ${syncMyReposMutation.isPending ? 'animate-spin' : ''}`} />
+            <span>{syncMyReposMutation.isPending ? 'Syncing...' : 'Sync My GitHub Repos'}</span>
+          </Button>
+
           <Button
             onClick={() => setShowDialog(true)}
             variant="electric"

@@ -8,9 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.schemas import LoginRequest, RegisterRequest, Token
 from app.core.config import get_settings
 from app.core.exceptions import AuthenticationError, ConflictError, NotFoundError
+from app.core.logging import get_logger
 from app.core.security import create_access_token, hash_password, verify_password
 from app.organizations.models import Organization, OrganizationMember
 from app.users.models import User
+
+logger = get_logger("openreview.auth")
 
 
 class AuthService:
@@ -207,13 +210,13 @@ class AuthService:
         if user:
             # Update user metadata
             user.github_id = github_id
+            user.github_access_token = github_access_token
             if gh_avatar:
                 user.avatar_url = gh_avatar
             if gh_name and not user.full_name:
                 user.full_name = gh_name
             user.is_active = True
-            await self.session.commit()
-            await self.session.refresh(user)
+            await self.session.flush()
         else:
             # Generate collision-free username
             base_username = re.sub(r"[^a-zA-Z0-9_-]", "", gh_login)[:40]
@@ -229,6 +232,7 @@ class AuthService:
                 full_name=gh_name,
                 avatar_url=gh_avatar,
                 github_id=github_id,
+                github_access_token=github_access_token,
                 hashed_password=hash_password(f"github-oauth-{github_id}-{gh_login}"),
                 is_active=True,
                 is_superuser=False,
@@ -236,27 +240,49 @@ class AuthService:
             self.session.add(user)
             await self.session.flush()
 
-            # Assign to organization
-            org_stmt = select(Organization).limit(1)
-            org = (await self.session.execute(org_stmt)).scalars().first()
-            if not org:
-                org = Organization(
-                    name=f"{gh_name}'s Team",
-                    slug=f"{username.lower()}-team",
-                    plan="team",
-                    max_repos=50,
-                )
-                self.session.add(org)
-                await self.session.flush()
+        # Ensure user has their own personal isolated workspace/organization
+        stmt_m = select(OrganizationMember).where(OrganizationMember.user_id == user.id)
+        membership = (await self.session.execute(stmt_m)).scalars().first()
+        if membership:
+            stmt_org = select(Organization).where(Organization.id == membership.organization_id)
+            user_org = (await self.session.execute(stmt_org)).scalar_one_or_none()
+        else:
+            user_org = None
+
+        if not user_org:
+            clean_slug = re.sub(r"[^a-z0-9-]", "", user.username.lower())[:30]
+            user_org = Organization(
+                name=f"{gh_name or user.username}'s Workspace",
+                slug=f"{clean_slug}-workspace-{user.id[:6]}",
+                plan="team",
+                max_repos=50,
+            )
+            self.session.add(user_org)
+            await self.session.flush()
 
             membership = OrganizationMember(
-                organization_id=org.id,
+                organization_id=user_org.id,
                 user_id=user.id,
                 role="admin",
             )
             self.session.add(membership)
-            await self.session.commit()
-            await self.session.refresh(user)
+            await self.session.flush()
+
+        # Commit user, workspace, and token credentials first to guarantee authentication
+        await self.session.commit()
+        await self.session.refresh(user)
+
+        # Synchronize THIS USER'S own repositories into their personal workspace
+        try:
+            from app.github.github_repository_service import GitHubRepositoryService
+            repo_svc = GitHubRepositoryService(self.session)
+            await repo_svc.sync_user_oauth_repositories(
+                organization_id=user_org.id,
+                user_access_token=github_access_token,
+            )
+        except Exception as sync_err:
+            logger.warning(f"Background repository sync encountered an issue: {sync_err}")
+            await self.session.rollback()
 
         token_str = create_access_token(
             subject=user.id,

@@ -42,11 +42,20 @@ async def list_repositories(
     query_org_id: Optional[str] = Query(None, alias="organization_id"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     session: AsyncSession = Depends(get_db),
     repo_service: RepositoryService = Depends(get_repo_service),
 ) -> List[RepositoryRead]:
+    user_org_ids = []
+    if current_user:
+        from app.organizations.models import OrganizationMember
+        stmt_m = select(OrganizationMember.organization_id).where(OrganizationMember.user_id == current_user.id)
+        user_org_ids = list((await session.execute(stmt_m)).scalars().all())
+
     target_org_id = organization_id or query_org_id
     if target_org_id:
+        if current_user and not current_user.is_superuser and target_org_id not in user_org_ids:
+            return []
         repos, _ = await repo_service.list_by_organization(
             organization_id=target_org_id,
             skip=skip,
@@ -54,10 +63,20 @@ async def list_repositories(
         )
         return [RepositoryRead.model_validate(r) for r in repos]
 
-    # Global/Tenant query fallback
-    stmt = select(Repository).order_by(Repository.full_name).offset(skip).limit(limit)
-    res = await session.execute(stmt)
-    return [RepositoryRead.model_validate(r) for r in res.scalars().all()]
+    if current_user:
+        if not user_org_ids:
+            return []
+        stmt = (
+            select(Repository)
+            .where(Repository.organization_id.in_(user_org_ids))
+            .order_by(Repository.full_name)
+            .offset(skip)
+            .limit(limit)
+        )
+        res = await session.execute(stmt)
+        return [RepositoryRead.model_validate(r) for r in res.scalars().all()]
+
+    return []
 
 
 @router.post(

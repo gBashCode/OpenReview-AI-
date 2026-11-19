@@ -41,4 +41,9 @@ export const githubApi = {
       method: 'POST',
     });
   },
+
+  syncMyRepositories: (): Promise<any[]> =>
+    apiRequest<any[]>('/github/sync-my-repos', {
+      method: 'POST',
+    }),
 };
