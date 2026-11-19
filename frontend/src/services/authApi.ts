@@ -60,6 +60,32 @@ export const authApi = {
     return res;
   },
 
+  getGoogleOAuthUrl: async (redirectUri?: string): Promise<{ url: string }> => {
+    const params = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : '';
+    return apiRequest<{ url: string }>(`/auth/google/url${params}`);
+  },
+
+  exchangeGoogleCode: async (code: string, redirectUri?: string): Promise<AuthResponse> => {
+    const res = await apiRequest<AuthResponse>('/auth/google/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
+    });
+    if (res?.token?.access_token) {
+      setAuthToken(res.token.access_token);
+    }
+    return res;
+  },
+
+  loginDemo: async (): Promise<AuthResponse> => {
+    const res = await apiRequest<AuthResponse>('/auth/demo', {
+      method: 'POST',
+    });
+    if (res?.token?.access_token) {
+      setAuthToken(res.token.access_token);
+    }
+    return res;
+  },
+
   logout: (): void => {
     setAuthToken(null);
   },

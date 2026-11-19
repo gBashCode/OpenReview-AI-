@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronDown,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { useToast } from '../ui/toast';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +22,7 @@ import { useAuth } from '../../context/AuthContext';
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { info, success } = useToast();
-  const { user, logout } = useAuth();
+  const { user, logout, isDemoMode, loginWithDemo } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -65,7 +66,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[#26221c] bg-[#12100d]/95 backdrop-blur-md px-6 py-2.5 flex items-center justify-between">
+    <header className="sticky top-0 z-40 border-b border-[#26221c] bg-[#12100d]/85 backdrop-blur-md px-6 py-2.5 flex items-center justify-between">
       {/* Left: Brand & Editorial Wordmark */}
       <div className="flex items-center gap-7">
         <Link to="/dashboard" className="flex items-center gap-3 group">
@@ -118,6 +119,34 @@ export const Navbar: React.FC = () => {
           <Zap className="w-3.5 h-3.5 text-[#3a9e8f]" />
           <span className="font-mono text-[11px]">API Docs</span>
         </a>
+
+        {/* 1-Click Demo Access or Active Demo Mode Indicator */}
+        {isDemoMode ? (
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] bg-[#1d1810] border border-[#d4a853]/50 text-[#d4a853] font-mono text-[11px] shadow-sm shadow-[#d4a853]/5"
+            title="Active Sandbox Demo Session with Read-Only Capabilities"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#d4a853] animate-pulse" />
+            <span className="font-medium">Demo Mode</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await loginWithDemo();
+                success('Demo Session Active', 'Switched to isolated sandbox demo mode.');
+              } catch (e: any) {
+                info('Demo Session', e.message || 'Demo session active.');
+              }
+            }}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-[2px] border border-[#d4a853]/40 bg-[#1a1713]/90 text-[#d4a853] hover:bg-[#252019] hover:border-[#d4a853] text-[11px] font-mono font-medium shadow-sm shadow-[#d4a853]/10 transition cursor-pointer group"
+            title="1-Click Sandbox Demo Access"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#d4a853] group-hover:scale-110 transition-transform" />
+            <span>1-Click Demo Access</span>
+          </button>
+        )}
 
         {/* Notifications Dropdown */}
         <div className="relative">

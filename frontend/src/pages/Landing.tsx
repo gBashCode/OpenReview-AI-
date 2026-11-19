@@ -19,7 +19,7 @@ export const Landing: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'security' | 'perf' | 'fix'>('security');
 
   return (
-    <div className="min-h-screen bg-[#0e0d0b] text-[#d8d2c4] selection:bg-[#d4a853]/25 selection:text-[#f5f0e6]">
+    <div className="min-h-screen bg-transparent text-[#d8d2c4] selection:bg-[#d4a853]/25 selection:text-[#f5f0e6]">
       {/* Top Editorial Navigation */}
       <header className="border-b border-[#26221c] px-6 lg:px-12 py-4 flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center gap-3">

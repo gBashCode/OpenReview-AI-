@@ -10,8 +10,8 @@ export const AppLayout: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0f0e0c] flex flex-col justify-center items-center text-[#8a8378]">
-        <div className="w-10 h-10 rounded-[2px] bg-[#1c1a17] border border-[#d4a853]/30 flex items-center justify-center shadow-lg shadow-[#d4a853]/5 mb-4 animate-pulse">
+      <div className="min-h-screen bg-transparent flex flex-col justify-center items-center text-[#8a8378]">
+        <div className="w-10 h-10 rounded-[2px] bg-[#1c1a17]/90 border border-[#d4a853]/30 flex items-center justify-center shadow-lg shadow-[#d4a853]/5 mb-4 animate-pulse">
           <ShieldCheck className="w-5 h-5 text-[#d4a853]" />
         </div>
         <p className="text-xs font-mono tracking-wider uppercase text-[#b8b0a2]">Verifying Review Session...</p>
@@ -24,7 +24,7 @@ export const AppLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0e0c] flex flex-col selection:bg-[#d4a853]/25 selection:text-[#f5f0e6]">
+    <div className="min-h-screen bg-transparent flex flex-col selection:bg-[#d4a853]/25 selection:text-[#f5f0e6]">
       <Navbar />
       <div className="flex flex-1">
         <Sidebar />

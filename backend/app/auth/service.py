@@ -290,3 +290,209 @@ class AuthService:
         )
         token = Token(access_token=token_str, expires_in=86400)
         return user, token
+
+    @staticmethod
+    def get_google_oauth_url(redirect_uri: Optional[str] = None, state: Optional[str] = None) -> str:
+        """Constructs Google OAuth 2.0 authorization URL."""
+        settings = get_settings()
+        client_id = settings.GOOGLE_CLIENT_ID
+        if not client_id:
+            raise AuthenticationError(
+                "GOOGLE_CLIENT_ID is not configured in application settings. "
+                "Please configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env."
+            )
+
+        callback_url = redirect_uri or settings.GOOGLE_REDIRECT_URI or "http://localhost:5173/auth/callback"
+        base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+        params = [
+            f"client_id={client_id}",
+            f"redirect_uri={callback_url}",
+            "response_type=code",
+            "scope=openid%20email%20profile",
+            "access_type=offline",
+            "prompt=select_account",
+        ]
+        if state:
+            params.append(f"state={state}")
+        return f"{base_url}?{'&'.join(params)}"
+
+    async def authenticate_google_code(
+        self,
+        code: str,
+        redirect_uri: Optional[str] = None,
+    ) -> Tuple[User, Token]:
+        """Exchanges Google authorization code for profile, finds or creates user, and returns JWT."""
+        settings = get_settings()
+        client_id = settings.GOOGLE_CLIENT_ID
+        client_secret = settings.GOOGLE_CLIENT_SECRET
+
+        if not client_id or not client_secret:
+            raise AuthenticationError(
+                "Google OAuth credentials (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) are not configured."
+            )
+
+        callback_url = redirect_uri or settings.GOOGLE_REDIRECT_URI or "http://localhost:5173/auth/callback"
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            token_payload = {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": callback_url,
+            }
+            token_resp = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data=token_payload,
+                headers={"Accept": "application/json"},
+            )
+
+            if token_resp.status_code != 200:
+                raise AuthenticationError(
+                    f"Failed to exchange Google OAuth code: {token_resp.text}"
+                )
+
+            token_data = token_resp.json()
+            google_access_token = token_data.get("access_token")
+            if not google_access_token:
+                raise AuthenticationError("No access token returned from Google.")
+
+            # Retrieve Google User Profile
+            user_resp = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {google_access_token}"},
+            )
+            if user_resp.status_code != 200:
+                raise AuthenticationError("Failed to fetch user profile from Google.")
+
+            g_user = user_resp.json()
+            google_id = str(g_user.get("sub"))
+            g_email = g_user.get("email")
+            g_name = g_user.get("name") or g_user.get("given_name") or g_email.split("@")[0]
+            g_avatar = g_user.get("picture")
+
+            if not g_email:
+                raise AuthenticationError("Google profile did not provide an email address.")
+
+        # Check existing user by google_id or email
+        stmt = select(User).where(or_(User.google_id == google_id, User.email == g_email))
+        user = (await self.session.execute(stmt)).scalar_one_or_none()
+
+        if user:
+            user.google_id = google_id
+            if g_avatar and not user.avatar_url:
+                user.avatar_url = g_avatar
+            if g_name and not user.full_name:
+                user.full_name = g_name
+            user.is_active = True
+            await self.session.commit()
+            await self.session.refresh(user)
+        else:
+            base_username = re.sub(r"[^a-zA-Z0-9_-]", "", g_email.split("@")[0])[:40]
+            username = base_username or f"user_{google_id[:8]}"
+            counter = 1
+            while (await self.session.execute(select(User).where(User.username == username))).scalar_one_or_none():
+                username = f"{base_username[:35]}_{counter}"
+                counter += 1
+
+            user = User(
+                email=g_email,
+                username=username,
+                full_name=g_name,
+                avatar_url=g_avatar,
+                google_id=google_id,
+                hashed_password=hash_password(f"google-oauth-{google_id}"),
+                is_active=True,
+                is_superuser=False,
+                is_demo=False,
+            )
+            self.session.add(user)
+            await self.session.flush()
+
+            # Ensure membership in an organization
+            org_stmt = select(Organization).limit(1)
+            org = (await self.session.execute(org_stmt)).scalars().first()
+            if not org:
+                org = Organization(
+                    name=f"{g_name}'s Team",
+                    slug=f"{username.lower()}-team",
+                    plan="team",
+                    max_repos=50,
+                )
+                self.session.add(org)
+                await self.session.flush()
+
+            membership = OrganizationMember(
+                organization_id=org.id,
+                user_id=user.id,
+                role="admin",
+            )
+            self.session.add(membership)
+            await self.session.commit()
+            await self.session.refresh(user)
+
+        token_str = create_access_token(
+            subject=user.id,
+            extra_claims={"email": user.email, "username": user.username, "google_id": user.google_id},
+        )
+        token = Token(access_token=token_str, expires_in=86400)
+        return user, token
+
+    async def create_demo_session(self) -> Tuple[User, Token]:
+        """Creates or retrieves a sandboxed read-only demo session user."""
+        demo_email = "demo-sandbox@openreview.ai"
+        stmt = select(User).where(User.email == demo_email)
+        user = (await self.session.execute(stmt)).scalar_one_or_none()
+
+        if not user:
+            user = User(
+                email=demo_email,
+                username="demo_architect",
+                full_name="Lead Architect (Demo Sandbox)",
+                avatar_url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+                hashed_password=hash_password("DemoSandboxSecure2026!"),
+                is_active=True,
+                is_superuser=False,
+                is_demo=True,
+            )
+            self.session.add(user)
+            await self.session.flush()
+
+            # Assign to demo organization
+            org_stmt = select(Organization).where(Organization.slug == "demo-sandbox-org")
+            org = (await self.session.execute(org_stmt)).scalar_one_or_none()
+            if not org:
+                org = Organization(
+                    name="OpenReview Demo Sandbox",
+                    slug="demo-sandbox-org",
+                    plan="team",
+                    max_repos=20,
+                )
+                self.session.add(org)
+                await self.session.flush()
+
+            membership = OrganizationMember(
+                organization_id=org.id,
+                user_id=user.id,
+                role="viewer",  # Demo users have read-only / viewer role
+            )
+            self.session.add(membership)
+            await self.session.commit()
+            await self.session.refresh(user)
+        else:
+            if not user.is_demo:
+                user.is_demo = True
+                await self.session.commit()
+                await self.session.refresh(user)
+
+        token_str = create_access_token(
+            subject=user.id,
+            extra_claims={
+                "email": user.email,
+                "username": user.username,
+                "is_demo": True,
+                "role": "viewer",
+            },
+        )
+        token = Token(access_token=token_str, expires_in=86400)
+        return user, token

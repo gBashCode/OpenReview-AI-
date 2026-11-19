@@ -22,6 +22,8 @@ class User(Base, UUIDMixin, TimestampMixin):
     avatar_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     github_id: Mapped[Optional[int]] = mapped_column(Integer, unique=True, index=True, nullable=True)
     github_access_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    google_id: Mapped[Optional[str]] = mapped_column(String(100), unique=True, index=True, nullable=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

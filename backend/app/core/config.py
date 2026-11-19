@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: Optional[str] = None
     GITHUB_TOKEN: Optional[str] = None
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: Optional[str] = None
+
     def get_github_private_key(self) -> Optional[str]:
         """Resolves GitHub App private key from environment variable or file path."""
         if self.GITHUB_APP_PRIVATE_KEY and len(self.GITHUB_APP_PRIVATE_KEY.strip()) > 0:

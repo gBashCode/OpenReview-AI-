@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 30 10% 6%;
+    --background: 0 0% 0%;
     --foreground: 36 15% 88%;
 
     --card: 30 8% 10%;
@@ -39,7 +39,7 @@
 /* ——— Base body ——— */
 body {
   font-family: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #0f0e0c;
+  background-color: #000000;
   color: #d8d2c4;
   letter-spacing: -0.011em;
   /* Layered warm noise grain via CSS — a subtle organic feel */
@@ -129,4 +129,13 @@ code, pre, kbd, .font-mono {
   background-repeat: repeat;
   background-size: 512px 512px;
   z-index: 1;
+}
+
+/* ——— Scoped Login Card: Premium Ivory / Beige Luxury Styling ——— */
+.openreview-login-card {
+  background-color: #FFFDF7 !important;
+  border: 1px solid #E8DDC9 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 35px rgba(232, 221, 201, 0.1) !important;
+  color: #292721 !important;
 }

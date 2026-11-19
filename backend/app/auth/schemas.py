@@ -43,3 +43,14 @@ class GitHubOAuthCallbackRequest(BaseModel):
     """Payload to exchange GitHub authorization code."""
     code: str
     redirect_uri: Optional[str] = None
+
+
+class GoogleOAuthURLResponse(BaseModel):
+    """Google OAuth authorize URL response."""
+    url: str
+
+
+class GoogleOAuthCallbackRequest(BaseModel):
+    """Payload to exchange Google authorization code."""
+    code: str
+    redirect_uri: Optional[str] = None

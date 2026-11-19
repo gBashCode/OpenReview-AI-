@@ -57,7 +57,7 @@ const navSections: NavSection[] = [
 
 export const Sidebar: React.FC = () => {
   return (
-    <aside className="w-60 border-r border-[#26221c] bg-[#110f0d] p-3.5 flex flex-col justify-between shrink-0 min-h-[calc(100vh-53px)] select-none">
+    <aside className="w-60 border-r border-[#26221c] bg-[#110f0d]/85 backdrop-blur-md p-3.5 flex flex-col justify-between shrink-0 min-h-[calc(100vh-53px)] select-none">
       <div className="space-y-6">
         {navSections.map((section) => (
           <div key={section.title}>

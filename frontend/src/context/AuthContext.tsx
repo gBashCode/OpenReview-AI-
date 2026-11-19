@@ -6,11 +6,13 @@ import { getAuthToken, setAuthToken } from '../services/apiClient';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isDemoMode: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGitHub: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   loginWithDemo: () => Promise<void>;
-  handleOAuthCallback: (tokenOrCode: { token?: string; code?: string }) => Promise<User>;
+  handleOAuthCallback: (params: { token?: string; code?: string; provider?: 'github' | 'google' }) => Promise<User>;
   logout: () => void;
 }
 
@@ -53,14 +55,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleOAuthCallback = async ({ token, code }: { token?: string; code?: string }): Promise<User> => {
+  const loginWithGoogle = async () => {
+    const res = await authApi.getGoogleOAuthUrl();
+    if (res?.url) {
+      window.location.href = res.url;
+    }
+  };
+
+  const handleOAuthCallback = async ({
+    token,
+    code,
+    provider = 'github',
+  }: {
+    token?: string;
+    code?: string;
+    provider?: 'github' | 'google';
+  }): Promise<User> => {
     if (token) {
       setAuthToken(token);
       const currentUser = await authApi.getMe();
       setUser(currentUser);
       return currentUser;
     } else if (code) {
-      const res = await authApi.exchangeGitHubCode(code);
+      const res =
+        provider === 'google'
+          ? await authApi.exchangeGoogleCode(code)
+          : await authApi.exchangeGitHubCode(code);
       setUser(res.user);
       return res.user;
     }
@@ -69,19 +89,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithDemo = async () => {
     try {
-      // Attempt login with standard demo account
-      const res = await authApi.login('architect@openreview.ai', 'OpenReview2026!');
+      // Authenticate via dedicated validated backend sandbox demo endpoint
+      const res = await authApi.loginDemo();
       setUser(res.user);
     } catch {
-      // If demo account does not exist in local DB, register it with username
-      const regRes = await authApi.register(
-        'architect@openreview.ai',
-        'OpenReview2026!',
-        'Lead Architect',
-        'OpenReview Engineering',
-        'architect'
-      );
-      setUser(regRes.user);
+      // Fallback to architect demo account if demo endpoint encounters local db migration
+      try {
+        const res = await authApi.login('architect@openreview.ai', 'OpenReview2026!');
+        setUser(res.user);
+      } catch {
+        const regRes = await authApi.register(
+          'architect@openreview.ai',
+          'OpenReview2026!',
+          'Lead Architect',
+          'OpenReview Engineering',
+          'architect'
+        );
+        setUser(regRes.user);
+      }
     }
   };
 
@@ -90,14 +115,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const isDemoMode = Boolean(user?.is_demo || user?.email?.includes('demo') || user?.username?.includes('demo'));
+
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated: !!user,
+        isDemoMode,
         isLoading,
         login,
         loginWithGitHub,
+        loginWithGoogle,
         loginWithDemo,
         handleOAuthCallback,
         logout,

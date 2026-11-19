@@ -5,6 +5,8 @@ export interface User {
   full_name?: string | null;
   avatar_url?: string | null;
   github_id?: number | null;
+  google_id?: string | null;
+  is_demo?: boolean;
   role: string;
   created_at: string;
 }

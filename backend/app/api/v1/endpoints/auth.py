@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.schemas import (
     GitHubOAuthCallbackRequest,
     GitHubOAuthURLResponse,
+    GoogleOAuthCallbackRequest,
+    GoogleOAuthURLResponse,
     LoginRequest,
     RegisterRequest,
     Token,
@@ -103,6 +105,71 @@ async def github_oauth_redirect(
     user, token = await service.authenticate_github_code(code=code)
     frontend_url = f"http://localhost:5173/auth/callback?token={token.access_token}"
     return RedirectResponse(url=frontend_url)
+
+
+@router.get(
+    "/google/url",
+    response_model=GoogleOAuthURLResponse,
+    summary="Get Google OAuth authorize URL",
+)
+async def get_google_oauth_url(
+    redirect_uri: Optional[str] = Query(None, description="Frontend callback URL"),
+    state: Optional[str] = Query(None, description="CSRF state"),
+) -> GoogleOAuthURLResponse:
+    """Returns the URL to redirect the user to Google for OAuth authorization."""
+    url = AuthService.get_google_oauth_url(redirect_uri=redirect_uri, state=state)
+    return GoogleOAuthURLResponse(url=url)
+
+
+@router.post(
+    "/google/callback",
+    status_code=status.HTTP_200_OK,
+    summary="Exchange Google OAuth code for JWT session",
+)
+async def google_oauth_callback(
+    payload: GoogleOAuthCallbackRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """Exchanges an authorization code from Google for an active user session and JWT."""
+    user, token = await service.authenticate_google_code(
+        code=payload.code,
+        redirect_uri=payload.redirect_uri,
+    )
+    return {
+        "user": UserRead.model_validate(user),
+        "token": token,
+    }
+
+
+@router.get(
+    "/google/callback",
+    summary="Browser redirect handler for Google OAuth",
+)
+async def google_oauth_redirect(
+    code: str = Query(..., description="Authorization code from Google"),
+    state: Optional[str] = Query(None),
+    service: AuthService = Depends(get_auth_service),
+) -> RedirectResponse:
+    """Handles direct browser callback from Google and redirects to frontend with token."""
+    user, token = await service.authenticate_google_code(code=code)
+    frontend_url = f"http://localhost:5173/auth/callback?token={token.access_token}"
+    return RedirectResponse(url=frontend_url)
+
+
+@router.post(
+    "/demo",
+    status_code=status.HTTP_200_OK,
+    summary="Establish a 1-click sandbox demo session",
+)
+async def demo_login(
+    service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """Establishes an isolated sandbox demo session with verified demo credentials."""
+    user, token = await service.create_demo_session()
+    return {
+        "user": UserRead.model_validate(user),
+        "token": token,
+    }
 
 
 @router.get(
