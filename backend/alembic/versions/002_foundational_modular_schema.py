@@ -134,11 +134,7 @@ def upgrade() -> None:
 
     # 7. Code Chunks Table (Vector embedding support)
     if "code_chunks" not in existing_tables:
-        embedding_col = (
-            sa.Column("embedding", sa.Text(), nullable=True)
-            if dialect_name == "sqlite"
-            else sa.Column("embedding", sa.NullType(), nullable=True)  # Or Vector(1536) in raw postgresql
-        )
+        embedding_col = sa.Column("embedding", sa.Text(), nullable=True)
         op.create_table(
             "code_chunks",
             sa.Column("id", sa.String(36), primary_key=True),

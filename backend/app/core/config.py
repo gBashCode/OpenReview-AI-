@@ -62,9 +62,11 @@ class Settings(BaseSettings):
             # Normalize postgres url for asyncpg if needed
             cleaned = v.strip()
             if cleaned.startswith("postgres://"):
-                return cleaned.replace("postgres://", "postgresql+asyncpg://", 1)
+                cleaned = cleaned.replace("postgres://", "postgresql+asyncpg://", 1)
             elif cleaned.startswith("postgresql://") and not cleaned.startswith("postgresql+asyncpg://"):
-                return cleaned.replace("postgresql://", "postgresql+asyncpg://", 1)
+                cleaned = cleaned.replace("postgresql://", "postgresql+asyncpg://", 1)
+            if "sslmode=" in cleaned:
+                cleaned = cleaned.replace("sslmode=", "ssl=")
             return cleaned
 
         # Fallback assemble from components
