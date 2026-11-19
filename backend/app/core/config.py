@@ -113,10 +113,18 @@ class Settings(BaseSettings):
         return None
 
     # AI / LLM Integration
-    DEFAULT_LLM_PROVIDER: Literal["openai", "anthropic", "gemini", "groq", "ollama"] = "openai"
+    DEFAULT_LLM_PROVIDER: Literal["openai", "anthropic", "gemini", "groq", "ollama", "mock"] = "openai"
     DEFAULT_MODEL: str = "gpt-4o-mini"
     DEFAULT_EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSION: int = 1536
+
+    LLM_MAX_CONTEXT_LENGTH: int = 128000
+    LLM_TEMPERATURE: float = 0.2
+    LLM_TIMEOUT_SECONDS: float = 60.0
+    LLM_RETRY_COUNT: int = 3
+    LLM_TOKEN_BUDGET: int = 200000
+    LLM_FALLBACK_PROVIDER: Optional[str] = "gemini"
+    LLM_FALLBACK_MODEL: Optional[str] = "gemini-2.5-flash"
 
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
