@@ -4,6 +4,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.analyzer.schemas import PRAnalysisRequest, PRAnalysisResult
+from app.analyzer.service import AnalyzerService
 from app.core.exceptions import NotFoundError
 from app.database.session import get_db
 from app.pull_requests.models import PullRequest
@@ -17,6 +19,10 @@ router = APIRouter(prefix="/pull-requests", tags=["Pull Requests"])
 
 def get_pr_service(session: AsyncSession = Depends(get_db)) -> PullRequestService:
     return PullRequestService(session)
+
+
+def get_analyzer_service(session: AsyncSession = Depends(get_db)) -> AnalyzerService:
+    return AnalyzerService(session)
 
 
 @router.get("", response_model=List[PullRequestRead], summary="List pull requests")
@@ -85,3 +91,29 @@ async def list_pr_reviews(
     stmt = select(Review).where(Review.pull_request_id == pr_id).order_by(Review.created_at.desc())
     result = await session.execute(stmt)
     return [ReviewRead.model_validate(r) for r in result.scalars().all()]
+
+
+@router.post(
+    "/{pr_id}/analyze",
+    response_model=PRAnalysisResult,
+    summary="Trigger comprehensive Pull Request impact and risk analysis",
+)
+async def analyze_pull_request(
+    pr_id: str,
+    payload: Optional[PRAnalysisRequest] = None,
+    service: AnalyzerService = Depends(get_analyzer_service),
+) -> PRAnalysisResult:
+    custom_diff = payload.raw_diff if payload else None
+    return await service.analyze_pull_request(pull_request_id=pr_id, custom_diff=custom_diff)
+
+
+@router.get(
+    "/{pr_id}/analysis",
+    response_model=PRAnalysisResult,
+    summary="Get Pull Request impact, complexity, risk score, and review plan",
+)
+async def get_pull_request_analysis(
+    pr_id: str,
+    service: AnalyzerService = Depends(get_analyzer_service),
+) -> PRAnalysisResult:
+    return await service.analyze_pull_request(pull_request_id=pr_id)
