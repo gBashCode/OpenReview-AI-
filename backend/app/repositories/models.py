@@ -51,13 +51,3 @@ class Repository(Base, UUIDMixin, TimestampMixin):
         back_populates="repository",
         cascade="all, delete-orphan",
     )
-    code_chunks: Mapped[List["CodeChunk"]] = relationship(
-        "CodeChunk",
-        back_populates="repository",
-        cascade="all, delete-orphan",
-    )
-    code_symbols: Mapped[List["CodeSymbol"]] = relationship(
-        "CodeSymbol",
-        back_populates="repository",
-        cascade="all, delete-orphan",
-    )

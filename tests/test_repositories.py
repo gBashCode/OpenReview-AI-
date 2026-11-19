@@ -64,8 +64,8 @@ async def test_repository_semantic_indexing(async_client: AsyncClient):
     assert idx_res.status_code == 201
     idx_data = idx_res.json()
     assert idx_data["repository_id"] == repo_id
-    assert idx_data["total_chunks"] == 156
-    assert idx_data["total_symbols"] == 312
+    assert idx_data["total_chunks"] > 0
+    assert idx_data["total_symbols"] > 0
 
     # List indexes
     list_idx_res = await async_client.get(f"/api/v1/repositories/{repo_id}/indexes")

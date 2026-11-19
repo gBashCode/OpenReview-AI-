@@ -7,7 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import PaginationParams, get_current_user_optional
 from app.database.session import get_db
 from app.indexing.models import RepositoryIndex
-from app.indexing.schemas import RepositoryIndexCreate, RepositoryIndexRead
+from app.indexing.schemas import (
+    ArchitectureSummaryResponse,
+    ContextRetrievalRequest,
+    PRContextEvidenceResponse,
+    RelatedFilesResponse,
+    RepositoryIndexCreate,
+    RepositoryIndexRead,
+    SemanticSearchRequest,
+    SemanticSearchResult,
+    SymbolSearchResult,
+)
 from app.indexing.service import IndexingService
 from app.organizations.models import Organization
 from app.repositories.models import Repository
@@ -139,3 +149,100 @@ async def trigger_indexing(
     payload.repository_id = repository_id
     index_record = await index_service.trigger_index(payload)
     return RepositoryIndexRead.model_validate(index_record)
+
+
+@router.get(
+    "/{repository_id}/indexes/{index_id}",
+    response_model=RepositoryIndexRead,
+    summary="Get status and details of a specific index pass",
+)
+async def get_index_details(
+    repository_id: str,
+    index_id: str,
+    index_service: IndexingService = Depends(get_index_service),
+) -> RepositoryIndexRead:
+    index = await index_service.get_by_id(index_id)
+    return RepositoryIndexRead.model_validate(index)
+
+
+@router.get(
+    "/{repository_id}/symbols",
+    response_model=List[SymbolSearchResult],
+    summary="Search code symbols (functions, classes, interfaces)",
+)
+async def search_symbols(
+    repository_id: str,
+    query: str = Query(..., min_length=1, description="Symbol name or prefix"),
+    kind: Optional[str] = Query(None, description="Symbol kind filter (function, class, method, etc.)"),
+    file_path: Optional[str] = Query(None, description="Optional file path filter"),
+    limit: int = Query(20, ge=1, le=100),
+    index_service: IndexingService = Depends(get_index_service),
+) -> List[SymbolSearchResult]:
+    return await index_service.search_symbols(
+        repository_id=repository_id,
+        query=query,
+        kind=kind,
+        file_path=file_path,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/{repository_id}/search",
+    response_model=List[SemanticSearchResult],
+    summary="Semantic vector search over repository code chunks",
+)
+async def search_code_semantic(
+    repository_id: str,
+    payload: SemanticSearchRequest,
+    index_service: IndexingService = Depends(get_index_service),
+) -> List[SemanticSearchResult]:
+    return await index_service.search_semantic(
+        repository_id=repository_id,
+        query=payload.query,
+        top_k=payload.top_k,
+        min_similarity=payload.min_similarity,
+    )
+
+
+@router.post(
+    "/{repository_id}/context",
+    response_model=PRContextEvidenceResponse,
+    summary="Hybrid context retrieval for pull request code review",
+)
+async def retrieve_pr_context(
+    repository_id: str,
+    payload: ContextRetrievalRequest,
+    index_service: IndexingService = Depends(get_index_service),
+) -> PRContextEvidenceResponse:
+    return await index_service.retrieve_pr_context(
+        repository_id=repository_id,
+        changed_files=payload.changed_files,
+        top_k_semantic=payload.top_k_semantic,
+    )
+
+
+@router.get(
+    "/{repository_id}/architecture",
+    response_model=ArchitectureSummaryResponse,
+    summary="Get repository architecture and framework summary",
+)
+async def get_architecture_summary(
+    repository_id: str,
+    index_service: IndexingService = Depends(get_index_service),
+) -> ArchitectureSummaryResponse:
+    return await index_service.get_architecture_summary(repository_id)
+
+
+@router.get(
+    "/{repository_id}/related-files",
+    response_model=RelatedFilesResponse,
+    summary="Get related dependencies, dependents, and tests for a file",
+)
+async def get_related_files(
+    repository_id: str,
+    file_path: str = Query(..., description="Target file path in repository"),
+    index_service: IndexingService = Depends(get_index_service),
+) -> RelatedFilesResponse:
+    return await index_service.get_related_files(repository_id=repository_id, file_path=file_path)
+
