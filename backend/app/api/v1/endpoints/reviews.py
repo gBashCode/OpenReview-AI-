@@ -13,6 +13,8 @@ from app.database.session import get_db
 from app.findings.models import Finding
 from app.findings.schemas import FindingCreate, FindingRead
 from app.findings.service import FindingService
+from app.orchestration.registry import get_agent_registry
+from app.orchestration.service import ReviewOrchestrationService
 from app.reviews.models import Review
 from app.reviews.schemas import (
     ReviewCommentCreate,
@@ -24,6 +26,12 @@ from app.reviews.schemas import (
 from app.reviews.service import ReviewService
 from app.services.llm_provider_service import LLMFactory, LLMReviewSummaryOutput
 from app.verification.models import TestRun
+from pydantic import BaseModel, Field
+
+
+class OrchestrateReviewRequest(BaseModel):
+    custom_diff: Optional[str] = Field(default=None, description="Optional unified diff to review")
+
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
@@ -314,3 +322,32 @@ async def add_review_discussion(
     payload.review_id = review_id
     discussion = await service.add_discussion_message(payload)
     return AgentDiscussionRead.model_validate(discussion)
+
+
+@router.get("/council/registry", summary="List registered review agents in the council")
+async def list_agent_registry():
+    """Returns metadata for all registered agents in the multi-agent council."""
+    registry = get_agent_registry()
+    # Trigger default agent population if needed
+    from app.orchestration.workflow import get_review_workflow
+    get_review_workflow()
+    return {"agents": registry.list_all()}
+
+
+@router.post(
+    "/{review_id}/orchestrate",
+    response_model=ReviewDetailRead,
+    summary="Execute autonomous LangGraph multi-agent review pass",
+)
+async def orchestrate_review(
+    review_id: str,
+    payload: Optional[OrchestrateReviewRequest] = None,
+    session: AsyncSession = Depends(get_db),
+    review_service: ReviewService = Depends(get_review_service),
+) -> ReviewDetailRead:
+    """Executes the full LangGraph state machine with the 8-agent council."""
+    orchestration_svc = ReviewOrchestrationService(session)
+    custom_diff = payload.custom_diff if payload else None
+    await orchestration_svc.execute_review(review_id, custom_diff=custom_diff)
+    return await get_review(review_id, review_service)
+

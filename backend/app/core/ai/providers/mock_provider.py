@@ -103,23 +103,95 @@ class MockLLMProvider(BaseLLMProvider):
         # Build valid dummy data matching the Pydantic schema if not provided
         payload_dict = dict(self.structured_response_data)
         if not payload_dict:
-            # Generate default values for schema fields
-            for field_name, field_info in response_model.model_fields.items():
-                annotation = field_info.annotation
-                if annotation in (str, Optional[str]):
-                    payload_dict[field_name] = f"Sample {field_name}"
-                elif annotation in (int, Optional[int]):
-                    payload_dict[field_name] = 10
-                elif annotation in (float, Optional[float]):
-                    payload_dict[field_name] = 95.0
-                elif annotation in (bool, Optional[bool]):
-                    payload_dict[field_name] = True
-                elif getattr(annotation, "__origin__", None) in (list, List):
-                    payload_dict[field_name] = []
-                elif getattr(annotation, "__origin__", None) in (dict, Dict):
-                    payload_dict[field_name] = {}
-                else:
-                    payload_dict[field_name] = None
+            model_name = getattr(response_model, "__name__", "")
+            if model_name == "AgentFindingList":
+                payload_dict = {
+                    "findings": [
+                        {
+                            "id": "mock-finding-1",
+                            "file_path": "app/auth.py",
+                            "line_number": 12,
+                            "end_line_number": 14,
+                            "side": "RIGHT",
+                            "category": "bug",
+                            "severity": "high",
+                            "title": "Mock detected finding",
+                            "message": "Potential issue detected in changed lines.",
+                            "suggested_patch": "+ # sanitized patch",
+                            "code_evidence": "user_input",
+                            "agent_name": "Mock Specialist",
+                            "confidence_score": 0.95,
+                        }
+                    ],
+                    "reasoning_summary": "Mock specialist analysis completed.",
+                }
+            elif model_name == "Reviewer2Output":
+                payload_dict = {
+                    "critiques": [
+                        {
+                            "finding_id": "mock-finding-1",
+                            "finding_title": "Mock detected finding",
+                            "is_supported": True,
+                            "challenge_reason": "Code evidence supports this claim in auth routine.",
+                            "suggested_action": "approve",
+                        }
+                    ],
+                    "missed_scenarios": ["Verify concurrent token expiration under load"],
+                    "reasoning_summary": "Mock adversarial evaluation completed.",
+                }
+            elif model_name == "VerificationOutput":
+                payload_dict = {
+                    "verified_findings": [
+                        {
+                            "finding": {
+                                "id": "mock-finding-1",
+                                "file_path": "app/auth.py",
+                                "line_number": 12,
+                                "end_line_number": 14,
+                                "side": "RIGHT",
+                                "category": "security",
+                                "severity": "critical",
+                                "title": "SQL Injection vulnerability",
+                                "message": "Unescaped string formatting in query.",
+                                "suggested_patch": "+ # parameterized query",
+                                "agent_name": "Security Sentinel",
+                                "confidence_score": 0.98,
+                            },
+                            "status": "verified",
+                            "verification_reason": "Execution reachability confirmed in diff.",
+                            "confidence_score": 0.98,
+                            "is_reproducible": True,
+                            "execution_path_checked": True,
+                        }
+                    ],
+                    "reasoning_summary": "Mock verification arbiter completed.",
+                    "consensus_notes": "Consensus reached on high priority security item.",
+                }
+            elif model_name == "PRContextSummary":
+                payload_dict = {
+                    "pr_purpose": "Update user authentication and token handling",
+                    "architecture_impact": "Auth module and database access patterns",
+                    "critical_files": ["app/auth.py"],
+                    "suggested_focus_areas": ["SQL safety", "Token lifetime", "Null checks"],
+                }
+            else:
+                # Generate default values for generic schema fields
+                for field_name, field_info in response_model.model_fields.items():
+                    annotation = field_info.annotation
+                    if annotation in (str, Optional[str]):
+                        payload_dict[field_name] = f"Sample {field_name}"
+                    elif annotation in (int, Optional[int]):
+                        payload_dict[field_name] = 10
+                    elif annotation in (float, Optional[float]):
+                        payload_dict[field_name] = 95.0
+                    elif annotation in (bool, Optional[bool]):
+                        payload_dict[field_name] = True
+                    elif getattr(annotation, "__origin__", None) in (list, List):
+                        payload_dict[field_name] = []
+                    elif getattr(annotation, "__origin__", None) in (dict, Dict):
+                        payload_dict[field_name] = {}
+                    else:
+                        payload_dict[field_name] = None
 
         instance = response_model.model_validate(payload_dict)
         raw_json = instance.model_dump_json()
