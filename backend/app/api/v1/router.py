@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     auth,
     autofix,
     findings,
+    github,
     health,
     organizations,
     pull_requests,
@@ -26,3 +27,4 @@ api_v1_router.include_router(reviews.router)
 api_v1_router.include_router(findings.router)
 api_v1_router.include_router(autofix.router)
 api_v1_router.include_router(analytics.router)
+api_v1_router.include_router(github.router)

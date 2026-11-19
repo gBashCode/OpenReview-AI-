@@ -91,10 +91,26 @@ class Settings(BaseSettings):
 
     # GitHub App
     GITHUB_APP_ID: Optional[str] = None
+    GITHUB_APP_SLUG: str = "openreview-ai"
+    GITHUB_APP_PRIVATE_KEY: Optional[str] = None
     GITHUB_APP_PRIVATE_KEY_PATH: Optional[str] = None
     GITHUB_WEBHOOK_SECRET: Optional[str] = None
     GITHUB_CLIENT_ID: Optional[str] = None
     GITHUB_CLIENT_SECRET: Optional[str] = None
+
+    def get_github_private_key(self) -> Optional[str]:
+        """Resolves GitHub App private key from environment variable or file path."""
+        if self.GITHUB_APP_PRIVATE_KEY and len(self.GITHUB_APP_PRIVATE_KEY.strip()) > 0:
+            key = self.GITHUB_APP_PRIVATE_KEY.strip()
+            # If formatted with literal '\n' characters in single-line env var
+            if "\\n" in key and "\n" not in key:
+                key = key.replace("\\n", "\n")
+            return key
+        if self.GITHUB_APP_PRIVATE_KEY_PATH:
+            p = Path(self.GITHUB_APP_PRIVATE_KEY_PATH)
+            if p.is_file():
+                return p.read_text(encoding="utf-8")
+        return None
 
     # AI / LLM Integration
     DEFAULT_LLM_PROVIDER: Literal["openai", "anthropic", "gemini", "groq", "ollama"] = "openai"
