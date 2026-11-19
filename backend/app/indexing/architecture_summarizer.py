@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 from app.indexing.dependency_graph import DependencyGraph
 from app.indexing.file_discovery import DiscoveredFile, FileCategory, Language
 

@@ -1,6 +1,6 @@
 """Review Execution Planner and Multi-Agent Orchestration Allocator."""
 
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Tuple
 from app.analyzer.schemas import (
     ChangeCategory,
     ChangedFileDTO,

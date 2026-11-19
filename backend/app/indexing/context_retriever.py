@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 import json
 import math
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

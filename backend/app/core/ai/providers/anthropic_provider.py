@@ -2,7 +2,7 @@
 
 import json
 import time
-from typing import Any, AsyncIterator, Dict, List, Optional, Type, TypeVar
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Type, TypeVar
 import httpx
 from pydantic import BaseModel
 
