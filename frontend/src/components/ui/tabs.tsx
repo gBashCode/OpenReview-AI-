@@ -43,7 +43,7 @@ export const TabsList: React.FC<{ className?: string; children: React.ReactNode 
   return (
     <div
       className={cn(
-        "inline-flex h-8 items-center justify-center rounded-[2px] bg-[#161411] p-0.5 border border-[#2a2621] text-[#8a8378]",
+        "inline-flex h-9 items-center justify-center rounded-full bg-[rgba(255,248,230,0.06)] p-1 border border-[rgba(243,234,214,0.18)] text-[rgba(243,234,214,0.72)]",
         className
       )}
     >
@@ -66,10 +66,10 @@ export const TabsTrigger: React.FC<{
       type="button"
       onClick={() => context.onValueChange(value)}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-[2px] px-3 py-1 text-xs font-mono transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40 select-none",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-full px-3.5 py-1 text-xs font-semibold transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40 select-none",
         isSelected
-          ? "bg-[#24201a] text-[#f5f0e6] shadow-sm border border-[#3d372e] font-semibold text-[#d4a853]"
-          : "hover:text-[#d8d2c4] hover:bg-[#1a1815]",
+          ? "bg-[rgba(255,248,230,0.15)] text-[#f3ead6] shadow-sm border border-[rgba(243,234,214,0.3)] font-semibold"
+          : "hover:text-[#f3ead6] hover:bg-white/5",
         className
       )}
     >

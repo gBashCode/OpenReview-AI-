@@ -67,18 +67,19 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="pointer-events-auto flex items-start gap-3 p-3.5 rounded-[3px] border border-[#36312a] bg-[#161411] text-[#d8d2c4] shadow-xl shadow-black/80 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+            className="pointer-events-auto flex items-start gap-3 p-3.5 rounded-[18px] border border-[rgba(243,234,214,0.22)] bg-[#14120f]/95 backdrop-blur-xl text-[#f3ead6] shadow-xl shadow-black/80 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
           >
             <div className="mt-0.5">{getIcon(t.type)}</div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-[#f5f0e6] tracking-tight">{t.title}</div>
+              <div className="text-xs font-semibold text-[#f3ead6] tracking-tight">{t.title}</div>
               {t.description && (
-                <div className="text-[11px] text-[#8a8378] mt-0.5 leading-relaxed">{t.description}</div>
+                <div className="text-[11px] text-[rgba(243,234,214,0.72)] mt-0.5 leading-relaxed">{t.description}</div>
               )}
             </div>
             <button
               onClick={() => removeToast(t.id)}
-              className="text-[#6a6358] hover:text-[#d8d2c4] p-0.5 rounded transition"
+              className="text-[rgba(243,234,214,0.55)] hover:text-[#f3ead6] p-0.5 rounded-full transition"
+              aria-label="Dismiss toast"
             >
               <X className="w-3.5 h-3.5" />
             </button>

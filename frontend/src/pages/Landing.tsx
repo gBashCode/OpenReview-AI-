@@ -14,6 +14,7 @@ import {
   GitFork,
   Cpu,
 } from 'lucide-react';
+import { OpenReviewLogo } from '../components/layout/OpenReviewLogo';
 
 export const Landing: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'security' | 'perf' | 'fix'>('security');
@@ -23,12 +24,10 @@ export const Landing: React.FC = () => {
       {/* Top Editorial Navigation */}
       <header className="border-b border-[#26221c] px-6 lg:px-12 py-4 flex items-center justify-between max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-[2px] bg-[#1a1814] border border-[#d4a853]/40 flex items-center justify-center">
-            <span className="font-serif italic text-base text-[#d4a853] font-bold">O</span>
-          </div>
+          <OpenReviewLogo size={36} />
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-[#f5f0e6] tracking-tight">OpenReview</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-[2px] font-mono tracking-widest bg-[#221f1a] text-[#d4a853] border border-[#38332a]">
+            <span className="font-bold text-xl text-[#ece6d8] tracking-tight">OpenReview</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-widest bg-[rgba(224,176,74,0.14)] text-[#e0b04a] border border-[#e0b04a]/30">
               AI · 0.1
             </span>
           </div>

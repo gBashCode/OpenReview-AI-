@@ -3,32 +3,32 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-[3px] text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#d4a853] disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer tracking-tight",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e0b04a] disabled:pointer-events-none disabled:opacity-40 select-none cursor-pointer tracking-tight active:scale-[0.97]",
   {
     variants: {
       variant: {
         default:
-          "bg-[#d4a853] text-[#0e0d0b] font-semibold hover:bg-[#e0b663] active:translate-y-[1px] shadow-sm",
+          "bg-[#d4a853] text-[#0e0d0b] hover:bg-[#e0b663] shadow-sm",
         electric:
-          "bg-gradient-to-r from-[#d4a853] via-[#e29b38] to-[#c7882c] text-[#0e0d0b] font-semibold hover:brightness-110 active:translate-y-[1px] shadow-sm shadow-[#d4a853]/10",
+          "bg-gradient-to-r from-[#d4a853] via-[#e29b38] to-[#c7882c] text-[#0e0d0b] hover:brightness-110 shadow-sm shadow-[#d4a853]/20",
         purple:
-          "bg-[#3a9e8f] text-[#0e0d0b] font-semibold hover:bg-[#47b2a2] active:translate-y-[1px]",
+          "bg-[#3a9e8f] text-[#0e0d0b] hover:bg-[#47b2a2]",
         destructive:
-          "bg-[#c75a4a] text-[#f7e8e6] font-semibold hover:bg-[#d96555] active:translate-y-[1px]",
+          "bg-[#c75a4a] text-[#f7e8e6] hover:bg-[#d96555]",
         outline:
-          "border border-[#36312a] bg-[#161411]/80 text-[#d8d2c4] hover:bg-[#201d19] hover:text-[#f5f0e6] hover:border-[#4a433a]",
+          "border border-[rgba(243,234,214,0.22)] bg-[rgba(255,248,230,0.06)] text-[#f3ead6] hover:bg-[rgba(255,248,230,0.12)] hover:border-[rgba(243,234,214,0.45)]",
         secondary:
-          "bg-[#201d19] text-[#d8d2c4] hover:bg-[#2a2621] hover:text-white border border-[#2a2621]",
+          "bg-[rgba(255,248,230,0.08)] text-[#f3ead6] hover:bg-[rgba(255,248,230,0.15)] border border-[rgba(243,234,214,0.18)]",
         ghost:
-          "hover:bg-[#201d19] hover:text-[#f5f0e6] text-[#9e9689]",
+          "hover:bg-[rgba(255,248,230,0.08)] hover:text-[#f5f0e6] text-[rgba(243,234,214,0.72)]",
         link:
           "text-[#d4a853] underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
-        default: "h-8 px-3.5 py-1.5",
-        sm: "h-7 rounded-[2px] px-2.5 text-[11px]",
-        lg: "h-9 rounded-[3px] px-5 text-sm",
-        icon: "h-8 w-8",
+        default: "h-9 px-4 py-1.5",
+        sm: "h-7 px-3 text-[11px]",
+        lg: "h-11 px-6 text-sm",
+        icon: "h-9 w-9",
       },
     },
     defaultVariants: {
@@ -48,7 +48,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, isLoading, children, disabled, ...props }, ref) => {
     return (
       <button
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, className }), className)}
         ref={ref}
         disabled={disabled || isLoading}
         {...props}

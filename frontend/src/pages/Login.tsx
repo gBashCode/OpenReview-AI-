@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../components/ui/toast';
 import { useAuth } from '../context/AuthContext';
+import { OpenReviewLogo } from '../components/layout/OpenReviewLogo';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -110,17 +111,15 @@ export const Login: React.FC = () => {
       </header>
 
       <div className="w-full max-w-[420px] space-y-6 mt-8 sm:mt-0">
-        {/* Brand Lockup Header (Preserved) */}
+        {/* Brand Lockup Header */}
         <div className="text-center space-y-2">
-          <Link to="/landing" className="inline-flex items-center gap-2.5 mb-1 group">
-            <div className="w-10 h-10 rounded-[2px] bg-[#1a1814]/90 border border-[#d4a853]/40 flex items-center justify-center shadow-sm group-hover:border-[#d4a853] transition-colors">
-              <span className="font-serif italic text-xl text-[#d4a853] font-bold">O</span>
-            </div>
+          <Link to="/landing" className="inline-flex items-center gap-2.5 mb-1 group outline-none">
+            <OpenReviewLogo size={42} />
             <div className="flex items-baseline gap-2">
-              <span className="font-serif text-2xl text-[#f5f0e6] tracking-tight group-hover:text-[#d4a853] transition-colors">
+              <span className="text-2xl font-bold tracking-tight text-[#ece6d8] group-hover:text-[#e0b04a] transition-colors">
                 OpenReview
               </span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-[2px] font-mono font-medium tracking-widest bg-[#221f1a] text-[#d4a853] border border-[#38332a]">
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-widest bg-[rgba(224,176,74,0.14)] text-[#e0b04a] border border-[#e0b04a]/30">
                 AI
               </span>
             </div>

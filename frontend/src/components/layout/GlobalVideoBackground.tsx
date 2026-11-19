@@ -48,7 +48,7 @@ export const GlobalVideoBackground: React.FC<GlobalVideoBackgroundProps> = ({
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#000000]"
+      className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#0b0b0b]"
     >
       {/* Looping Cinematic Video */}
       {!hasError && !prefersReducedMotion && (
