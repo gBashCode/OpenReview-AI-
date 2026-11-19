@@ -773,6 +773,16 @@ class GitHubReviewPublishingEngine:
                 operation_name="Publish GitHub PR Review",
             )
 
+            # GitHub does not allow users to REQUEST_CHANGES or APPROVE their own PRs
+            if review_resp.status_code == 422 and "own pull request" in review_resp.text.lower():
+                logger.info("User cannot REQUEST_CHANGES on their own PR. Retrying review submission with event 'COMMENT'.")
+                review_event = "COMMENT"
+                review_payload["event"] = "COMMENT"
+                review_resp = await client.post(
+                    f"/repos/{owner}/{repo_name}/pulls/{pull_number}/reviews",
+                    json=review_payload,
+                )
+
             github_review_id = None
             github_review_url = None
 
