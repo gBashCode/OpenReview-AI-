@@ -23,5 +23,18 @@ def test_environment_flags():
     dev_settings = Settings(APP_ENV="development")
     assert not dev_settings.is_production
 
-    prod_settings = Settings(APP_ENV="production")
+    prod_settings = Settings(
+        APP_ENV="production",
+        SECRET_KEY="production-super-secret-key-at-least-32-chars-long-12345",
+        GITHUB_WEBHOOK_SECRET="whsec_test_secret_for_webhook_verification",
+    )
     assert prod_settings.is_production
+
+
+def test_production_secret_key_validation():
+    import pytest
+    from pydantic import ValidationError
+
+    # Default secret key must fail in production
+    with pytest.raises(ValidationError):
+        Settings(APP_ENV="production")

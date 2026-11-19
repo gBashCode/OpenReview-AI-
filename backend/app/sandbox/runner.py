@@ -80,15 +80,16 @@ class EphemeralSandboxRunner:
         start_time = time.perf_counter()
 
         try:
-            # Write patched source files into the sandbox
+            # Write patched source files into the sandbox with strict path traversal validation
             for rel_path, content in patched_files.items():
-                dest_path = os.path.join(temp_dir, rel_path)
+                dest_path = self.enforcer.validate_safe_path(temp_dir, rel_path)
                 os.makedirs(os.path.dirname(dest_path), exist_ok=True)
                 with open(dest_path, "w", encoding="utf-8") as f:
                     f.write(content)
 
-            # Write generated verification test file
-            test_file_path = os.path.join(temp_dir, test_filename)
+            # Write generated verification test file safely
+            safe_test_name = os.path.basename(test_filename)
+            test_file_path = self.enforcer.validate_safe_path(temp_dir, safe_test_name)
             with open(test_file_path, "w", encoding="utf-8") as f:
                 f.write(test_code)
 

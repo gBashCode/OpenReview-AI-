@@ -32,8 +32,8 @@ class GitHubWebhookService:
         """Verifies HMAC-SHA256 signature using timing-safe comparison."""
         webhook_secret = settings.GITHUB_WEBHOOK_SECRET
         if not webhook_secret:
-            logger.warning("GITHUB_WEBHOOK_SECRET is not configured; skipping signature verification.")
-            return True
+            logger.error("SECURITY ALERT: GITHUB_WEBHOOK_SECRET is not configured; rejecting webhook signature verification.")
+            return False
 
         if not signature_header or not signature_header.startswith("sha256="):
             return False

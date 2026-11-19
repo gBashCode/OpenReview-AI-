@@ -6,7 +6,7 @@ Utilizes Pydantic Settings (v2) for strongly typed, validated settings with cach
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Literal, Optional, Union
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -162,6 +162,17 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return bool(self.DATABASE_URL and "sqlite" in self.DATABASE_URL)
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.APP_ENV == "production":
+            if self.SECRET_KEY == "openreview-development-secret-key-change-in-production":
+                raise ValueError("SECURITY ALERT: SECRET_KEY must be changed from default in production.")
+            if len(self.SECRET_KEY) < 32:
+                raise ValueError("SECURITY ALERT: SECRET_KEY must be at least 32 characters long in production.")
+            if not self.GITHUB_WEBHOOK_SECRET:
+                raise ValueError("SECURITY ALERT: GITHUB_WEBHOOK_SECRET must be configured in production.")
+        return self
 
 
 @lru_cache(maxsize=1)

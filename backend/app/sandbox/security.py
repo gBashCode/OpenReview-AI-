@@ -132,3 +132,18 @@ class SandboxSecurityEnforcer:
             truncated = raw_output[: self.max_output_bytes]
             return truncated + "\n... [Output truncated by Sandbox Security Enforcer: exceeded 1MB limit] ...\n"
         return raw_output
+
+    @staticmethod
+    def validate_safe_path(base_dir: str, rel_path: str) -> str:
+        """Validates that a relative path does not escape the sandbox base directory.
+
+        Prevents directory traversal attacks via ../ or absolute paths.
+        """
+        canonical_base = os.path.realpath(os.path.abspath(base_dir))
+        target_path = os.path.realpath(os.path.abspath(os.path.join(base_dir, rel_path)))
+        prefix = canonical_base if canonical_base.endswith(os.sep) else canonical_base + os.sep
+        if target_path != canonical_base and not target_path.startswith(prefix):
+            raise ValueError(
+                f"Security violation: path traversal detected '{rel_path}' outside sandbox boundary '{base_dir}'"
+            )
+        return target_path
