@@ -43,7 +43,7 @@ export const TabsList: React.FC<{ className?: string; children: React.ReactNode 
   return (
     <div
       className={cn(
-        "inline-flex h-9 items-center justify-center rounded-lg bg-[#0e1422] p-1 border border-slate-800/80 text-slate-400",
+        "inline-flex h-8 items-center justify-center rounded-[2px] bg-[#161411] p-0.5 border border-[#2a2621] text-[#8a8378]",
         className
       )}
     >
@@ -66,10 +66,10 @@ export const TabsTrigger: React.FC<{
       type="button"
       onClick={() => context.onValueChange(value)}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 select-none",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-[2px] px-3 py-1 text-xs font-mono transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40 select-none",
         isSelected
-          ? "bg-[#182032] text-white shadow-sm border border-slate-700/60"
-          : "hover:text-slate-200 hover:bg-slate-800/40",
+          ? "bg-[#24201a] text-[#f5f0e6] shadow-sm border border-[#3d372e] font-semibold text-[#d4a853]"
+          : "hover:text-[#d8d2c4] hover:bg-[#1a1815]",
         className
       )}
     >

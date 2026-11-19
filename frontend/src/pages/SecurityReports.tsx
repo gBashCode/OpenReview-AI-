@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -10,9 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ShieldAlert,
   ShieldCheck,
-  Lock,
   Download,
-  AlertTriangle,
   Search,
   ExternalLink,
   Wrench,
@@ -70,15 +68,19 @@ export const SecurityReports: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#26221c]">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">Security & Vulnerability Intelligence</h1>
-            <Badge variant="destructive">Live Security Scans</Badge>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono tracking-widest text-[#d4a853] uppercase">[LEDGER · 07 · SECURITY]</span>
+            <div className="h-2.5 w-px bg-[#36312a]" />
+            <span className="text-[10px] font-mono tracking-wider text-[#8a8378] uppercase">Vulnerability Ledger</span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <h1 className="text-3xl font-serif font-normal text-[#f5f0e6] tracking-tight mt-1">
+            Security Intelligence & CVEs
+          </h1>
+          <p className="text-xs text-[#8a8378] mt-1.5 leading-relaxed">
             Automated deep security analysis detecting injection flaws, secret leaks, and access control gaps.
           </p>
         </div>
@@ -88,9 +90,9 @@ export const SecurityReports: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handleExportSarif}
-            className="flex items-center gap-1.5 text-xs"
+            className="flex items-center gap-1.5 text-xs font-mono border-[#2e2a24] text-[#b8b0a2]"
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <Download className="w-3.5 h-3.5 text-[#8a8378]" />
             <span>Export SARIF / JSON</span>
           </Button>
 
@@ -98,82 +100,74 @@ export const SecurityReports: React.FC = () => {
             variant="electric"
             size="sm"
             onClick={() => navigate('/autofix')}
-            className="flex items-center gap-1.5 text-xs font-semibold"
+            className="flex items-center gap-1.5 text-xs font-mono font-medium"
           >
-            <Wrench className="w-3.5 h-3.5 text-amber-300" />
+            <Wrench className="w-3.5 h-3.5 text-[#0e0d0b]" />
             <span>Remediate in AutoFix</span>
           </Button>
         </div>
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-4">
-            <div className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-between">
-              <span>Critical Security Flaws</span>
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-rose-400">{criticalCount}</div>
-            <p className="text-[11px] text-slate-500 mt-0.5">High consequence vulnerabilities</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="p-4 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] font-mono text-[#8a8378] mb-1 flex items-center justify-between">
+            <span>[01] CRITICAL FLAWS</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c75a4a]" />
+          </div>
+          <div className="text-2xl font-serif text-[#e06c5b]">{criticalCount}</div>
+          <p className="text-[11px] font-mono text-[#6a6358] mt-1">High consequence vulnerabilities</p>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-4">
-            <div className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-between">
-              <span>High Severity</span>
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-amber-400">{highCount}</div>
-            <p className="text-[11px] text-slate-500 mt-0.5">Requires developer review</p>
-          </CardContent>
-        </Card>
+        <div className="p-4 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] font-mono text-[#8a8378] mb-1 flex items-center justify-between">
+            <span>[02] HIGH SEVERITY</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#e29b38]" />
+          </div>
+          <div className="text-2xl font-serif text-[#f0af54]">{highCount}</div>
+          <p className="text-[11px] font-mono text-[#6a6358] mt-1">Requires reviewer triage</p>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-4">
-            <div className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-between">
-              <span>Medium Risk</span>
-              <span className="w-2 h-2 rounded-full bg-yellow-500" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-yellow-400">{mediumCount}</div>
-            <p className="text-[11px] text-slate-500 mt-0.5">Best practice & hardening</p>
-          </CardContent>
-        </Card>
+        <div className="p-4 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] font-mono text-[#8a8378] mb-1 flex items-center justify-between">
+            <span>[03] MEDIUM RISK</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d4a853]" />
+          </div>
+          <div className="text-2xl font-serif text-[#d4a853]">{mediumCount}</div>
+          <p className="text-[11px] font-mono text-[#6a6358] mt-1">Hardening & best practices</p>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-4">
-            <div className="text-xs text-slate-400 font-medium mb-1 flex items-center justify-between">
-              <span>Resolved Flaws</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-bold font-mono text-emerald-400">{resolvedCount}</div>
-            <p className="text-[11px] text-slate-500 mt-0.5">Patched or mitigated</p>
-          </CardContent>
-        </Card>
+        <div className="p-4 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] font-mono text-[#8a8378] mb-1 flex items-center justify-between">
+            <span>[04] RESOLVED FLAWS</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#5a9e6f]" />
+          </div>
+          <div className="text-2xl font-serif text-[#6cb582]">{resolvedCount}</div>
+          <p className="text-[11px] font-mono text-[#6a6358] mt-1">Patched or mitigated</p>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl border border-slate-800 bg-[#0e1422]">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-2.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
         <div className="relative w-full sm:w-80">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#6a6358]" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search security findings or file paths..."
-            className="pl-9 h-8 text-xs bg-slate-950/60 border-slate-800"
+            className="pl-9 h-8 text-xs font-mono bg-[#161411] border-[#2a2621]"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+        <div className="flex items-center gap-1 w-full sm:w-auto font-mono text-xs">
           {['all', 'critical', 'high', 'medium', 'low'].map((sev) => (
             <button
               key={sev}
               onClick={() => setSeverityFilter(sev)}
-              className={`px-3 py-1 rounded-md text-xs font-semibold capitalize transition ${
+              className={`px-3 py-1 rounded-[2px] text-xs font-mono capitalize transition-colors ${
                 severityFilter === sev
-                  ? 'bg-sky-500 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-[#221f1a] text-[#d4a853] font-medium border border-[#38332a]'
+                  : 'text-[#8a8378] hover:text-[#d8d2c4]'
               }`}
             >
               {sev}
@@ -185,30 +179,30 @@ export const SecurityReports: React.FC = () => {
       {/* Findings List */}
       <div className="space-y-3">
         {isLoading ? (
-          <div className="p-12 text-center text-xs text-slate-500 font-mono">Loading security findings from backend...</div>
+          <div className="p-12 text-center text-xs text-[#6a6358] font-mono">Loading security findings from backend...</div>
         ) : findings.length === 0 ? (
-          <Card className="border-slate-800 bg-[#0c101c]">
+          <Card className="border-dashed border-[#26221c] bg-[#13110e]">
             <CardContent className="p-12 text-center space-y-2">
-              <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
-              <div className="text-sm font-semibold text-white">No Security Vulnerabilities Found</div>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <ShieldCheck className="w-8 h-8 text-[#5a9e6f] mx-auto" />
+              <div className="text-base font-serif text-[#f5f0e6]">No Security Vulnerabilities Detected</div>
+              <p className="text-xs text-[#8a8378] max-w-sm mx-auto font-mono">
                 No active security findings match your criteria across analyzed pull requests.
               </p>
             </CardContent>
           </Card>
         ) : (
           findings.map((f: Finding) => (
-            <Card key={f.id} className="border-slate-800 bg-[#0c101c] hover:border-slate-700/80 transition">
+            <Card key={f.id} className="border-[#26221c] bg-[#13110e] hover:border-[#383229] transition-colors">
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                      className={`w-8 h-8 rounded-[2px] flex items-center justify-center shrink-0 mt-0.5 ${
                         f.severity.toLowerCase() === 'critical'
-                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          ? 'bg-[#221614] text-[#e06c5b] border border-[#c75a4a]/30'
                           : f.severity.toLowerCase() === 'high'
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          ? 'bg-[#221b12] text-[#f0af54] border border-[#e29b38]/30'
+                          : 'bg-[#1e1b16] text-[#d4a853] border border-[#d4a853]/30'
                       }`}
                     >
                       <ShieldAlert className="w-4 h-4" />
@@ -216,7 +210,7 @@ export const SecurityReports: React.FC = () => {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-white text-sm">{f.title}</span>
+                        <span className="font-serif text-base text-[#f5f0e6]">{f.title}</span>
                         <Badge
                           variant={
                             f.severity.toLowerCase() === 'critical'
@@ -225,17 +219,17 @@ export const SecurityReports: React.FC = () => {
                               ? 'warning'
                               : 'secondary'
                           }
-                          className="text-[10px] py-0"
+                          className="text-[10px] py-0 font-mono"
                         >
                           {f.severity.toUpperCase()}
                         </Badge>
-                        <Badge variant="outline" className="text-[10px] font-mono py-0 text-slate-400">
+                        <Badge variant="outline" className="text-[10px] font-mono py-0 text-[#8a8378] border-[#2e2a24]">
                           {f.verification_status}
                         </Badge>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-                        <FileCode className="w-3.5 h-3.5 text-slate-500" />
+                      <div className="flex items-center gap-2 text-xs text-[#787165] font-mono">
+                        <FileCode className="w-3.5 h-3.5 text-[#6a6358]" />
                         <span>
                           {f.file_path}:{f.line_number || '—'}
                         </span>
@@ -248,7 +242,7 @@ export const SecurityReports: React.FC = () => {
                       variant={f.is_resolved ? 'outline' : 'secondary'}
                       size="sm"
                       onClick={() => resolveMutation.mutate({ id: f.id, is_resolved: !f.is_resolved })}
-                      className="text-xs h-7"
+                      className="text-xs font-mono h-7 border-[#2e2a24]"
                     >
                       {f.is_resolved ? 'Reopen' : 'Mark Resolved'}
                     </Button>
@@ -256,7 +250,7 @@ export const SecurityReports: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => navigate(`/reviews/${f.review_id}`)}
-                      className="text-xs h-7 text-sky-400 hover:text-sky-300"
+                      className="text-xs font-mono h-7 text-[#d4a853] hover:text-[#f5f0e6]"
                     >
                       <span>Review Details</span>
                       <ExternalLink className="w-3 h-3 ml-1" />
@@ -264,19 +258,19 @@ export const SecurityReports: React.FC = () => {
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-300 leading-relaxed">{f.message}</p>
+                <p className="text-xs text-[#b8b0a2] leading-relaxed font-sans">{f.message}</p>
 
                 {f.evidence && (
-                  <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-900 font-mono text-[11px] text-slate-300 overflow-x-auto">
-                    <div className="text-[10px] uppercase text-slate-500 mb-1">Source Evidence</div>
+                  <div className="p-3 rounded-[2px] bg-[#0c0a09] border border-[#24201a] font-mono text-[11px] text-[#b8b0a2] overflow-x-auto">
+                    <div className="text-[9px] uppercase font-mono text-[#6a6358] mb-1">Source Evidence</div>
                     <pre>{f.evidence}</pre>
                   </div>
                 )}
 
                 {f.suggested_patch && (
-                  <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-500/20 font-mono text-[11px] text-emerald-300 overflow-x-auto">
-                    <div className="text-[10px] uppercase text-emerald-400 font-semibold mb-1 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-300" />
+                  <div className="p-3 rounded-[2px] bg-[#142017] border border-[#5a9e6f]/30 font-mono text-[11px] text-[#6cb582] overflow-x-auto">
+                    <div className="text-[9px] uppercase font-mono text-[#5a9e6f] font-medium mb-1 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-[#d4a853]" />
                       <span>Suggested Remediation</span>
                     </div>
                     <pre>{f.suggested_patch}</pre>

@@ -12,11 +12,7 @@ import {
   GitFork,
   Plus,
   Trash2,
-  ExternalLink,
   Search,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
   ArrowRight,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
@@ -80,13 +76,20 @@ export const Repositories: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 animate-in fade-in duration-300">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#26221c]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Connected Repositories</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Manage codebases monitored for autonomous pull request inspection passes.
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono tracking-widest text-[#d4a853] uppercase">[LEDGER · 02]</span>
+            <div className="h-2.5 w-px bg-[#36312a]" />
+            <span className="text-[10px] font-mono tracking-wider text-[#8a8378] uppercase">Codebases</span>
+          </div>
+          <h1 className="text-3xl font-serif font-normal text-[#f5f0e6] tracking-tight mt-1">
+            Connected Repositories
+          </h1>
+          <p className="text-xs text-[#8a8378] mt-1.5 leading-relaxed">
+            Codebases enrolled in AST symbol extraction and autonomous multi-agent pull request inspection.
           </p>
         </div>
 
@@ -94,26 +97,26 @@ export const Repositories: React.FC = () => {
           <Button
             onClick={() => setShowDialog(true)}
             variant="electric"
-            className="flex items-center gap-2 text-xs font-semibold"
+            className="flex items-center gap-2 text-xs font-mono font-medium"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 text-[#0e0d0b]" />
             <span>Connect Repository</span>
           </Button>
         </div>
       </div>
 
       {/* Search & Filter bar */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#6a6358]" />
           <Input
             placeholder="Filter repositories by name or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-8 text-xs bg-[#0b101c]"
+            className="pl-9 h-8 text-xs font-mono bg-[#14120f] border-[#26221c]"
           />
         </div>
-        <div className="text-xs text-slate-500 font-mono">
+        <div className="text-xs text-[#787165] font-mono">
           Showing {filteredRepos?.length || 0} repositories
         </div>
       </div>
@@ -121,33 +124,33 @@ export const Repositories: React.FC = () => {
       {/* Repositories List */}
       <div className="space-y-3">
         {isLoading ? (
-          <div className="p-12 text-center text-slate-500 font-mono text-xs">
-            Loading repositories from backend...
+          <div className="p-12 text-center text-[#6a6358] font-mono text-xs">
+            Querying repository registry from backend...
           </div>
         ) : !filteredRepos || filteredRepos.length === 0 ? (
-          <Card className="p-12 text-center border-dashed border-slate-800 bg-[#0c101c]">
-            <GitFork className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-white">No repositories match your filter</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Click &quot;Connect Repository&quot; to link your code repository via GitHub App.
+          <Card className="p-12 text-center border-dashed border-[#2e2a24] bg-[#14120f]">
+            <GitFork className="w-8 h-8 text-[#6a6358] mx-auto mb-3" />
+            <h3 className="text-base font-serif text-[#f5f0e6]">No repositories match your filter</h3>
+            <p className="text-xs text-[#8a8378] mt-1 max-w-sm mx-auto font-mono">
+              Click &quot;Connect Repository&quot; to link your codebase via GitHub App.
             </p>
           </Card>
         ) : (
           filteredRepos.map((repo: Repository) => (
             <Card
               key={repo.id}
-              className="border-slate-800/90 bg-[#0c101c] hover:border-slate-700/80 transition"
+              className="border-[#26221c] bg-[#13110e] hover:border-[#383229] transition-colors"
             >
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                  <div className="w-9 h-9 rounded-[2px] bg-[#1b1915] border border-[#332e26] flex items-center justify-center text-[#d4a853]">
                     <GitFork className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <Link
                         to={`/repositories/${repo.id}`}
-                        className="font-bold text-white text-sm hover:text-sky-400 transition"
+                        className="font-serif text-base text-[#f5f0e6] hover:text-[#d4a853] transition-colors"
                       >
                         {repo.full_name}
                       </Link>
@@ -159,16 +162,16 @@ export const Repositories: React.FC = () => {
                       </Badge>
                     </div>
                     {repo.description && (
-                      <p className="text-xs text-slate-400 mt-0.5">{repo.description}</p>
+                      <p className="text-xs text-[#8a8378] mt-0.5 leading-relaxed">{repo.description}</p>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Link to={`/repositories/${repo.id}`}>
-                    <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-xs">
+                    <Button variant="outline" size="sm" className="flex items-center gap-1.5 text-xs font-mono border-[#2e2a24]">
                       <span>Repository Details</span>
-                      <ArrowRight className="w-3 h-3" />
+                      <ArrowRight className="w-3 h-3 text-[#d4a853]" />
                     </Button>
                   </Link>
 
@@ -176,7 +179,7 @@ export const Repositories: React.FC = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => deleteRepoMutation.mutate(repo.id)}
-                    className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                    className="text-[#6a6358] hover:text-[#e06c5b] hover:bg-[#c75a4a]/10"
                     title="Disconnect repository"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -193,14 +196,14 @@ export const Repositories: React.FC = () => {
         <DialogHeader>
           <DialogTitle>Connect GitHub Repository</DialogTitle>
           <DialogDescription>
-            Register an existing GitHub repository to enable autonomous multi-agent code reviews.
+            Register an existing repository to enable autonomous multi-agent code reviews.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 font-mono text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] text-[#8a8378] mb-1">
                 Owner / Organization
               </label>
               <Input
@@ -211,7 +214,7 @@ export const Repositories: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] text-[#8a8378] mb-1">
                 Repository Name
               </label>
               <Input
@@ -224,7 +227,7 @@ export const Repositories: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-300 mb-1">
+            <label className="block text-[11px] text-[#8a8378] mb-1">
               GitHub Repo ID
             </label>
             <Input
@@ -236,7 +239,7 @@ export const Repositories: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-300 mb-1">
+            <label className="block text-[11px] text-[#8a8378] mb-1">
               Description (Optional)
             </label>
             <Input

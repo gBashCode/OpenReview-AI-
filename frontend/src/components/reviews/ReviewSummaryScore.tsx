@@ -16,34 +16,34 @@ export const ReviewSummaryScore: React.FC<ReviewSummaryScoreProps> = ({
   qualityScore = 0,
 }) => {
   const getScoreColor = (val: number | null | undefined) => {
-    if (!val) return 'text-slate-400';
-    if (val >= 90) return 'text-emerald-400';
-    if (val >= 75) return 'text-sky-400';
-    if (val >= 60) return 'text-amber-400';
-    return 'text-rose-400';
+    if (!val) return 'text-[#8a8378]';
+    if (val >= 90) return 'text-[#6cb582]';
+    if (val >= 75) return 'text-[#d4a853]';
+    if (val >= 60) return 'text-[#f0af54]';
+    return 'text-[#e06c5b]';
   };
 
   const metrics = [
     {
-      label: 'Overall Score',
+      label: '[01] OVERALL SCORE',
       val: score,
       icon: Award,
       color: getScoreColor(score),
     },
     {
-      label: 'Security Index',
+      label: '[02] SECURITY INDEX',
       val: securityScore,
       icon: Shield,
       color: getScoreColor(securityScore),
     },
     {
-      label: 'Performance',
+      label: '[03] PERFORMANCE',
       val: performanceScore,
       icon: Zap,
       color: getScoreColor(performanceScore),
     },
     {
-      label: 'Code Quality',
+      label: '[04] CODE QUALITY',
       val: qualityScore,
       icon: Sparkles,
       color: getScoreColor(qualityScore),
@@ -51,21 +51,21 @@ export const ReviewSummaryScore: React.FC<ReviewSummaryScoreProps> = ({
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {metrics.map((m) => {
         const Icon = m.icon;
         return (
-          <Card key={m.label} className="border-slate-800 bg-slate-900/60">
+          <Card key={m.label} className="border-[#26221c] bg-[#13110e]">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-400 font-medium mb-1">{m.label}</p>
-                <div className="text-2xl font-bold font-mono tracking-tight flex items-baseline gap-1">
+                <p className="text-[10px] font-mono text-[#8a8378] tracking-wider mb-1">{m.label}</p>
+                <div className="text-2xl font-serif tracking-tight flex items-baseline gap-1">
                   <span className={m.color}>{m.val ? m.val.toFixed(1) : '--'}</span>
-                  <span className="text-xs text-slate-500 font-normal">/100</span>
+                  <span className="text-xs font-mono text-[#6a6358] font-normal">/100</span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-lg bg-slate-800/80 flex items-center justify-center text-slate-400">
-                <Icon className="w-5 h-5" />
+              <div className="w-9 h-9 rounded-[2px] bg-[#1b1915] border border-[#2e2a24] flex items-center justify-center text-[#8a8378]">
+                <Icon className="w-4 h-4" />
               </div>
             </CardContent>
           </Card>

@@ -8,16 +8,12 @@ import { reviewApi } from '@/services/reviewApi';
 import { Review } from '@/types/review';
 import { useNavigate } from 'react-router-dom';
 import {
-  History,
   Search,
   Download,
   GitPullRequest,
   GitCommit,
-  User,
   Clock,
   ArrowRight,
-  Filter,
-  CheckCircle2,
   FileCheck,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
@@ -63,13 +59,20 @@ export const ReviewHistory: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#26221c]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Review History & Compliance Audit</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Complete cryptographic audit trail of all automated multi-agent code reviews and checks.
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono tracking-widest text-[#d4a853] uppercase">[LEDGER · 09 · AUDIT]</span>
+            <div className="h-2.5 w-px bg-[#36312a]" />
+            <span className="text-[10px] font-mono tracking-wider text-[#8a8378] uppercase">Review Audit Trail</span>
+          </div>
+          <h1 className="text-3xl font-serif font-normal text-[#f5f0e6] tracking-tight mt-1">
+            Review History & Compliance Audit
+          </h1>
+          <p className="text-xs text-[#8a8378] mt-1.5 leading-relaxed">
+            Cryptographic audit trail of all automated multi-agent code reviews, static checks, and arbiter verdicts.
           </p>
         </div>
 
@@ -78,9 +81,9 @@ export const ReviewHistory: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handleExportCsv}
-            className="flex items-center gap-1.5 text-xs"
+            className="flex items-center gap-1.5 text-xs font-mono border-[#2e2a24] text-[#b8b0a2]"
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <Download className="w-3.5 h-3.5 text-[#8a8378]" />
             <span>Export Audit CSV</span>
           </Button>
         </div>
@@ -89,24 +92,24 @@ export const ReviewHistory: React.FC = () => {
       {/* Filter bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#6a6358]" />
           <Input
             placeholder="Search by review ID, commit SHA, or summary..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-8 text-xs bg-[#0b101c]"
+            className="pl-9 h-8 text-xs font-mono bg-[#14120f] border-[#26221c]"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-[#0e1422] p-1 rounded-lg border border-slate-800 text-xs">
+        <div className="flex items-center gap-1 bg-[#14120f] p-1 rounded-[2px] border border-[#26221c] text-xs font-mono">
           {['all', 'completed', 'analyzing', 'failed'].map((o) => (
             <button
               key={o}
               onClick={() => setStatusFilter(o)}
-              className={`px-2.5 py-1 rounded text-[11px] capitalize transition ${
+              className={`px-3 py-1 rounded-[2px] text-[11px] capitalize transition-colors ${
                 statusFilter === o
-                  ? 'bg-sky-500/20 text-sky-400 font-semibold'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#221f1a] text-[#d4a853] font-medium border border-[#38332a]'
+                  : 'text-[#8a8378] hover:text-[#d8d2c4]'
               }`}
             >
               {o}
@@ -116,18 +119,18 @@ export const ReviewHistory: React.FC = () => {
       </div>
 
       {/* Reviews Table / List */}
-      <Card className="border-slate-800 bg-[#0c101c]">
+      <Card className="border-[#26221c] bg-[#13110e]">
         <CardContent className="p-0">
-          <div className="divide-y divide-slate-800/80">
+          <div className="divide-y divide-[#201d18]">
             {isLoading ? (
-              <div className="p-12 text-center text-xs text-slate-500 font-mono">
-                Loading review history from backend...
+              <div className="p-12 text-center text-xs text-[#6a6358] font-mono">
+                Querying review history from backend...
               </div>
             ) : filteredReviews.length === 0 ? (
               <div className="p-12 text-center space-y-2">
-                <FileCheck className="w-8 h-8 text-slate-600 mx-auto" />
-                <div className="text-sm font-semibold text-white">No Review Records Found</div>
-                <p className="text-xs text-slate-400">
+                <FileCheck className="w-8 h-8 text-[#6a6358] mx-auto mb-2" />
+                <div className="text-base font-serif text-[#f5f0e6]">No Review Records Found</div>
+                <p className="text-xs text-[#8a8378] font-mono">
                   Trigger an automated code review on any pull request to record an audit entry.
                 </p>
               </div>
@@ -136,15 +139,15 @@ export const ReviewHistory: React.FC = () => {
                 <div
                   key={rev.id}
                   onClick={() => navigate(`/reviews/${rev.id}`)}
-                  className="p-4 flex items-center justify-between hover:bg-slate-900/50 cursor-pointer transition"
+                  className="p-4 flex items-center justify-between hover:bg-[#1a1713] cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-9 h-9 rounded-[2px] bg-[#1b1915] border border-[#332e26] flex items-center justify-center text-[#d4a853]">
                       <GitPullRequest className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-xs">Review {rev.id.slice(0, 8)}</span>
+                        <span className="font-mono text-xs font-medium text-[#f5f0e6]">REV-{rev.id.slice(0, 8)}</span>
                         <Badge
                           variant={
                             rev.status === 'completed'
@@ -153,22 +156,22 @@ export const ReviewHistory: React.FC = () => {
                               ? 'warning'
                               : 'destructive'
                           }
-                          className="text-[10px] py-0"
+                          className="text-[10px] py-0 font-mono"
                         >
                           {rev.status.toUpperCase()}
                         </Badge>
                       </div>
 
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono mt-1">
+                      <div className="flex items-center gap-3 text-[11px] text-[#787165] font-mono mt-1">
                         <span className="flex items-center gap-1">
-                          <GitCommit className="w-3 h-3 text-slate-600" />
+                          <GitCommit className="w-3 h-3 text-[#6a6358]" />
                           <span>{rev.commit_sha.slice(0, 7)}</span>
                         </span>
-                        <span>•</span>
+                        <span>·</span>
                         <span>{rev.findings_count} findings</span>
-                        <span>•</span>
+                        <span>·</span>
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-600" />
+                          <Clock className="w-3 h-3 text-[#6a6358]" />
                           <span>{new Date(rev.created_at).toLocaleString()}</span>
                         </span>
                       </div>
@@ -177,14 +180,14 @@ export const ReviewHistory: React.FC = () => {
 
                   <div className="flex items-center gap-6">
                     <div className="text-right">
-                      <div className="font-mono font-bold text-sm text-sky-400">
-                        {rev.score != null ? `${rev.score.toFixed(1)}/100` : '--'}
+                      <div className="font-serif text-base text-[#d4a853]">
+                        {rev.score != null ? `${rev.score.toFixed(1)} / 100` : '--'}
                       </div>
-                      <div className="text-[10px] text-slate-500 font-mono">
+                      <div className="text-[10px] text-[#787165] font-mono">
                         Security: {rev.security_score != null ? `${rev.security_score.toFixed(0)}%` : '--'}
                       </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-500" />
+                    <ArrowRight className="w-4 h-4 text-[#6a6358]" />
                   </div>
                 </div>
               ))

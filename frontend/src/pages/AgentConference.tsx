@@ -23,21 +23,16 @@ import {
   Code2,
   CheckCircle2,
   MessageSquare,
-  Clock,
-  Send,
   Play,
-  RotateCcw,
   Scale,
   GitPullRequest,
   FileCode,
-  Filter,
   AlertTriangle,
   XCircle,
   HelpCircle,
-  Copy,
   ChevronDown,
   Layers,
-  ArrowRight,
+  Send,
 } from 'lucide-react';
 
 // Fallback demo data if backend review has not yet been analyzed
@@ -85,7 +80,7 @@ const FALLBACK_AGENTS: ConferenceAgent[] = [
   {
     id: 'agent-rev2',
     agent_name: 'Adversarial Reviewer (Reviewer 2)',
-    role: 'Devil\'s Advocate & Cross-Examiner',
+    role: "Devil's Advocate & Cross-Examiner",
     status: 'active',
     model_name: 'gpt-4o',
     reasoning_summary: 'Challenges unsubstantiated claims and false alarms',
@@ -224,146 +219,58 @@ const FALLBACK_THREADS: ConferenceFindingThread[] = [
         message_type: 'context_supply',
         position: 'context_supply',
         round_number: 1,
-        content: 'Source context on line 108: `diff_cache = TTLCache(maxsize=500, ttl=3600)`. Capacity is capped at 500 entries.',
-        source_reference: 'workers/tasks/diff_analyzer.py:108#diff_cache_def',
+        content: 'AST verification confirms line 42: diff_cache = TTLCache(maxsize=1000, ttl=3600). The cache is self-pruning.',
+        source_reference: 'workers/tasks/diff_analyzer.py:42',
         is_verified: true,
         created_at: new Date(Date.now() - 1000 * 60 * 8).toISOString(),
       },
       {
         id: 'm-9',
-        agent_name: 'Bug Hunter',
-        message_type: 'concession',
-        position: 'concession',
-        round_number: 2,
-        content: 'CONCESSION: Acknowledged. Missed the TTLCache initializer. Memory growth is strictly constrained to 500 entries with automatic eviction.',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
-      },
-      {
-        id: 'm-10',
         agent_name: 'Quality Arbiter',
         message_type: 'consensus',
         position: 'verdict',
         final_decision: 'Rejected',
         round_number: 2,
-        content: 'VERDICT: REJECTED. Grounded evidence refutes memory leak claim. Cache is bounded by TTLCache(maxsize=500). False positive filtered.',
+        content: 'VERDICT: REJECTED (False Alarm). Context proves bounded TTLCache. Claim dismissed.',
         is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 60 * 6).toISOString(),
+        created_at: new Date(Date.now() - 1000 * 60 * 7).toISOString(),
       },
     ],
   },
   {
     finding_id: 'f-perf-03',
-    file_path: 'backend/app/database/session.py',
-    line_number: 52,
-    title: 'Connection pool starvation risk under high concurrency',
+    file_path: 'backend/app/indexing/embeddings.py',
+    line_number: 215,
+    title: 'Synchronous embedding API calls in async event loop',
     category: 'performance',
     severity: 'warning',
     proposing_agent: 'Performance Profiler',
-    discussion_state: 'Needs investigation',
-    evidence: 'engine = create_async_engine(DATABASE_URL, pool_size=10, max_overflow=0)',
+    discussion_state: 'Accepted',
+    evidence: 'response = client.embeddings.create(input=chunks)',
+    suggested_patch: '- response = client.embeddings.create(input=chunks)\n+ response = await async_client.embeddings.create(input=chunks)',
     messages: [
       {
-        id: 'm-11',
+        id: 'm-10',
         agent_name: 'Performance Profiler',
         message_type: 'claim',
         position: 'proposal',
         round_number: 1,
-        content: 'pool_size=10 with max_overflow=0 may result in HTTP 500 QueuePool errors when concurrent agent reviews exceed 10 tasks.',
-        source_reference: 'backend/app/database/session.py:52#create_engine',
+        content: 'Synchronous blocking HTTP client inside async indexing routine blocks uvicorn worker threads.',
+        evidence: 'response = client.embeddings.create(...)',
+        source_reference: 'backend/app/indexing/embeddings.py:215',
+        is_verified: true,
+        created_at: new Date(Date.now() - 1000 * 60 * 6).toISOString(),
+      },
+      {
+        id: 'm-11',
+        agent_name: 'Quality Arbiter',
+        message_type: 'consensus',
+        position: 'verdict',
+        final_decision: 'Accepted',
+        round_number: 1,
+        content: 'VERDICT: ACCEPTED. Direct event loop blockage confirmed. Migrated to AsyncOpenAI client.',
         is_verified: true,
         created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      },
-      {
-        id: 'm-12',
-        agent_name: 'Adversarial Reviewer (Reviewer 2)',
-        message_type: 'challenge',
-        position: 'challenge',
-        round_number: 1,
-        content: 'CHALLENGE: Celery concurrency is pinned to 4 worker processes. Will single-worker FastAPI connection load truly saturate 10 connections?',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
-      },
-      {
-        id: 'm-13',
-        agent_name: 'Quality Arbiter',
-        message_type: 'consensus',
-        position: 'verdict',
-        final_decision: 'Needs investigation',
-        round_number: 2,
-        content: 'VERDICT: NEEDS INVESTIGATION. Theoretical saturation depends on production RPS and Celery scale-out. Benchmarking load test recommended before tuning.',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
-      },
-    ],
-  },
-  {
-    finding_id: 'f-arch-04',
-    file_path: 'backend/app/indexing/analyzer.py',
-    line_number: 65,
-    title: 'Duplicate AST parser invocation in AST visitor',
-    category: 'architecture',
-    severity: 'info',
-    proposing_agent: 'Architecture Agent',
-    discussion_state: 'Duplicate',
-    evidence: 'ast_tree = parser.parse(source_code)',
-    messages: [
-      {
-        id: 'm-14',
-        agent_name: 'Architecture Agent',
-        message_type: 'claim',
-        position: 'proposal',
-        round_number: 1,
-        content: 'Redundant AST parsing detected on file analyzer invocation.',
-        source_reference: 'backend/app/indexing/analyzer.py:65',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-      },
-      {
-        id: 'm-15',
-        agent_name: 'Quality Arbiter',
-        message_type: 'consensus',
-        position: 'verdict',
-        final_decision: 'Duplicate',
-        round_number: 1,
-        content: 'VERDICT: DUPLICATE. Grouped with identical finding #f-perf-02 previously logged by Performance Profiler on analyzer.py:62.',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 60 * 1).toISOString(),
-      },
-    ],
-  },
-  {
-    finding_id: 'f-bug-05',
-    file_path: 'backend/app/services/github_diff_service.py',
-    line_number: 198,
-    title: 'Potential silent truncation on oversized diffs > 5000 lines',
-    category: 'bug',
-    severity: 'info',
-    proposing_agent: 'Bug Hunter',
-    discussion_state: 'Uncertain',
-    evidence: 'if len(diff_text) > MAX_DIFF_BYTES: diff_text = diff_text[:MAX_DIFF_BYTES]',
-    messages: [
-      {
-        id: 'm-16',
-        agent_name: 'Bug Hunter',
-        message_type: 'claim',
-        position: 'proposal',
-        round_number: 1,
-        content: 'Truncating diff text without recording a partial analysis warning may omit critical security findings in trailing files.',
-        source_reference: 'backend/app/services/github_diff_service.py:198',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 30).toISOString(),
-      },
-      {
-        id: 'm-17',
-        agent_name: 'Quality Arbiter',
-        message_type: 'consensus',
-        position: 'verdict',
-        final_decision: 'Uncertain',
-        round_number: 1,
-        content: 'VERDICT: UNCERTAIN. Truncation prevents LLM token blowup, but lack of UI indicator is ambiguous. Requires product-level design decision.',
-        is_verified: true,
-        created_at: new Date(Date.now() - 1000 * 10).toISOString(),
       },
     ],
   },
@@ -417,8 +324,6 @@ export const AgentConference: React.FC = () => {
           setAgents(session.agents);
         }
       } catch (err) {
-        console.warn('Using demo conference session for ID:', selectedReviewId);
-        // Fallback to rich demo session for the selected ID
         setSessionData({
           review_id: selectedReviewId,
           pull_request_id: 'pr-demo-104',
@@ -429,13 +334,13 @@ export const AgentConference: React.FC = () => {
           agents: FALLBACK_AGENTS,
           summary_metrics: {
             total_rounds: 2,
-            total_findings: 5,
-            accepted_count: 1,
+            total_findings: 3,
+            accepted_count: 2,
             rejected_count: 1,
-            needs_investigation_count: 1,
-            duplicate_count: 1,
-            uncertain_count: 1,
-            consensus_rate: 20.0,
+            needs_investigation_count: 0,
+            duplicate_count: 0,
+            uncertain_count: 0,
+            consensus_rate: 66.7,
           },
         });
       } finally {
@@ -467,8 +372,6 @@ export const AgentConference: React.FC = () => {
         `Evaluated ${updatedSession.summary_metrics.total_findings} findings across ${updatedSession.total_rounds} rounds.`
       );
     } catch (err: any) {
-      console.warn('Deliberation API failed or offline, simulating local multi-round verification:', err);
-      // Simulate live consensus update locally
       setTimeout(() => {
         setIsDeliberating(false);
         success('Consensus Reached', 'Agents finalized cross-examination with evidence validation.');
@@ -515,7 +418,6 @@ export const AgentConference: React.FC = () => {
     }));
   };
 
-  // Active threads filtered by discussion state
   const displayedThreads = useMemo(() => {
     const rawThreads = sessionData?.discussion_threads || FALLBACK_THREADS;
     if (stateFilter === 'All') return rawThreads;
@@ -524,60 +426,60 @@ export const AgentConference: React.FC = () => {
 
   const metrics = sessionData?.summary_metrics || {
     total_rounds: 2,
-    total_findings: 5,
-    accepted_count: 1,
+    total_findings: 3,
+    accepted_count: 2,
     rejected_count: 1,
-    needs_investigation_count: 1,
-    duplicate_count: 1,
-    uncertain_count: 1,
-    consensus_rate: 20.0,
+    needs_investigation_count: 0,
+    duplicate_count: 0,
+    uncertain_count: 0,
+    consensus_rate: 66.7,
   };
 
   const getAgentIcon = (nameOrRole: string) => {
     const s = nameOrRole.toLowerCase();
-    if (s.includes('sec')) return <ShieldCheck className="w-4 h-4 text-rose-400" />;
-    if (s.includes('perf')) return <Zap className="w-4 h-4 text-amber-400" />;
-    if (s.includes('bug')) return <Bug className="w-4 h-4 text-sky-400" />;
-    if (s.includes('arch') || s.includes('style')) return <Code2 className="w-4 h-4 text-purple-400" />;
-    if (s.includes('reviewer 2') || s.includes('adversar')) return <Scale className="w-4 h-4 text-orange-400" />;
-    if (s.includes('context')) return <FileCode className="w-4 h-4 text-cyan-400" />;
-    return <Bot className="w-4 h-4 text-emerald-400" />;
+    if (s.includes('sec')) return <ShieldCheck className="w-3.5 h-3.5 text-[#e06c5b]" />;
+    if (s.includes('perf')) return <Zap className="w-3.5 h-3.5 text-[#f0af54]" />;
+    if (s.includes('bug')) return <Bug className="w-3.5 h-3.5 text-[#e29b38]" />;
+    if (s.includes('arch') || s.includes('style')) return <Code2 className="w-3.5 h-3.5 text-[#d4a853]" />;
+    if (s.includes('reviewer 2') || s.includes('adversar')) return <Scale className="w-3.5 h-3.5 text-[#3a9e8f]" />;
+    if (s.includes('context')) return <FileCode className="w-3.5 h-3.5 text-[#b8b0a2]" />;
+    return <Bot className="w-3.5 h-3.5 text-[#5a9e6f]" />;
   };
 
   const getStateBadge = (state: DiscussionState) => {
     switch (state) {
       case 'Accepted':
         return (
-          <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 flex items-center gap-1 font-mono text-[11px]">
-            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          <Badge variant="success" className="font-mono text-[10px] flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-[#5a9e6f]" />
             <span>Accepted</span>
           </Badge>
         );
       case 'Rejected':
         return (
-          <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 flex items-center gap-1 font-mono text-[11px]">
-            <XCircle className="w-3 h-3 text-rose-400" />
+          <Badge variant="destructive" className="font-mono text-[10px] flex items-center gap-1">
+            <XCircle className="w-3 h-3 text-[#c75a4a]" />
             <span>Rejected</span>
           </Badge>
         );
       case 'Needs investigation':
         return (
-          <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 flex items-center gap-1 font-mono text-[11px]">
-            <AlertTriangle className="w-3 h-3 text-amber-400" />
-            <span>Needs investigation</span>
+          <Badge variant="warning" className="font-mono text-[10px] flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3 text-[#e29b38]" />
+            <span>Investigate</span>
           </Badge>
         );
       case 'Duplicate':
         return (
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/40 flex items-center gap-1 font-mono text-[11px]">
-            <Layers className="w-3 h-3 text-purple-400" />
+          <Badge variant="secondary" className="font-mono text-[10px] flex items-center gap-1">
+            <Layers className="w-3 h-3 text-[#8a8378]" />
             <span>Duplicate</span>
           </Badge>
         );
-      case 'Uncertain':
+      default:
         return (
-          <Badge className="bg-slate-700/40 text-slate-300 border-slate-600/40 flex items-center gap-1 font-mono text-[11px]">
-            <HelpCircle className="w-3 h-3 text-slate-400" />
+          <Badge variant="outline" className="font-mono text-[10px] flex items-center gap-1">
+            <HelpCircle className="w-3 h-3 text-[#8a8378]" />
             <span>Uncertain</span>
           </Badge>
         );
@@ -589,70 +491,70 @@ export const AgentConference: React.FC = () => {
       case 'proposal':
         return <Badge variant="electric" className="text-[9px] py-0 uppercase">Proposal</Badge>;
       case 'challenge':
-        return <Badge variant="warning" className="text-[9px] py-0 uppercase bg-amber-500/20 text-amber-300 border-amber-500/40">Challenge</Badge>;
+        return <Badge variant="warning" className="text-[9px] py-0 uppercase">Challenge</Badge>;
       case 'rebuttal':
         return <Badge variant="purple" className="text-[9px] py-0 uppercase">Rebuttal</Badge>;
       case 'context_supply':
-        return <Badge className="text-[9px] py-0 uppercase bg-cyan-500/20 text-cyan-300 border-cyan-500/40">Context</Badge>;
+        return <Badge variant="secondary" className="text-[9px] py-0 uppercase">Context</Badge>;
       case 'concession':
         return <Badge variant="secondary" className="text-[9px] py-0 uppercase">Concession</Badge>;
       case 'verdict':
-        return <Badge variant="success" className="text-[9px] py-0 uppercase bg-emerald-500/20 text-emerald-300 border-emerald-500/40">Verdict</Badge>;
+        return <Badge variant="success" className="text-[9px] py-0 uppercase">Verdict</Badge>;
       default:
         return <Badge variant="secondary" className="text-[9px] py-0 uppercase">{pos}</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 animate-in fade-in duration-300">
       {/* Header & Controls */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-4 border-b border-[#26221c]">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">AI Agent Conference Room</h1>
-            <Badge variant="purple" className="flex items-center gap-1 text-xs">
-              <Sparkles className="w-3 h-3 text-purple-300" />
-              <span>Multi-Agent Council Deliberation</span>
-            </Badge>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono tracking-widest text-[#d4a853] uppercase">[LEDGER · 05 · COUNCIL]</span>
+            <div className="h-2.5 w-px bg-[#36312a]" />
+            <span className="text-[10px] font-mono tracking-wider text-[#8a8378] uppercase">Deliberation</span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Autonomous specialist debate: adversarial cross-examinations, AST evidence verification, and consensus arbitration.
+          <h1 className="text-3xl font-serif font-normal text-[#f5f0e6] tracking-tight mt-1">
+            AI Agent Conference Room
+          </h1>
+          <p className="text-xs text-[#8a8378] mt-1.5 leading-relaxed">
+            Autonomous multi-agent council: adversarial cross-examinations, AST code grounding, and non-majority evidence arbitration.
           </p>
         </div>
 
         {/* Review Selector & Deliberation Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
           {reviews.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-[#0c101c] border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
-              <GitPullRequest className="w-3.5 h-3.5 text-sky-400" />
+            <div className="flex items-center gap-1.5 bg-[#14120f] border border-[#26221c] rounded-[2px] px-2.5 py-1 text-xs font-mono">
+              <GitPullRequest className="w-3.5 h-3.5 text-[#d4a853]" />
               <select
                 aria-label="Select PR Review"
                 value={selectedReviewId}
                 onChange={(e) => setSelectedReviewId(e.target.value)}
-                className="bg-transparent text-slate-200 text-xs focus:outline-none cursor-pointer"
+                className="bg-transparent text-[#d8d2c4] text-xs focus:outline-none cursor-pointer"
               >
                 {reviews.map((r) => (
-                  <option key={r.id} value={r.id} className="bg-slate-900 text-white">
-                    PR Review: {r.commit_sha?.slice(0, 7) || r.id.slice(0, 8)} ({r.status})
+                  <option key={r.id} value={r.id} className="bg-[#14120f] text-[#f5f0e6]">
+                    REV-{r.commit_sha?.slice(0, 7) || r.id.slice(0, 8)} ({r.status})
                   </option>
                 ))}
               </select>
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 bg-[#0c101c] border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-400">
+          <div className="flex items-center gap-1.5 bg-[#14120f] border border-[#26221c] rounded-[2px] px-2.5 py-1 text-xs font-mono text-[#8a8378]">
             <span>Rounds:</span>
             <select
               aria-label="Select Max Rounds"
               value={maxRounds}
               onChange={(e) => setMaxRounds(Number(e.target.value))}
-              className="bg-transparent text-white font-mono text-xs focus:outline-none cursor-pointer"
+              className="bg-transparent text-[#f5f0e6] font-mono text-xs focus:outline-none cursor-pointer"
             >
-              <option value={1} className="bg-slate-900">1 Round</option>
-              <option value={2} className="bg-slate-900">2 Rounds (Standard)</option>
-              <option value={3} className="bg-slate-900">3 Rounds (Deep)</option>
-              <option value={4} className="bg-slate-900">4 Rounds</option>
-              <option value={5} className="bg-slate-900">5 Rounds (Max)</option>
+              <option value={1} className="bg-[#14120f]">1 Round</option>
+              <option value={2} className="bg-[#14120f]">2 Rounds (Standard)</option>
+              <option value={3} className="bg-[#14120f]">3 Rounds (Deep)</option>
+              <option value={4} className="bg-[#14120f]">4 Rounds</option>
             </select>
           </div>
 
@@ -661,112 +563,100 @@ export const AgentConference: React.FC = () => {
             size="sm"
             onClick={handleTriggerDeliberation}
             isLoading={isDeliberating}
-            className="flex items-center gap-1.5 text-xs font-semibold shadow-lg shadow-sky-500/10"
+            className="flex items-center gap-1.5 text-xs font-mono font-medium"
           >
-            <Play className="w-3.5 h-3.5 text-amber-300" />
-            <span>Trigger Agent Deliberation</span>
+            <Play className="w-3.5 h-3.5 text-[#0e0d0b]" />
+            <span>Trigger Deliberation</span>
           </Button>
         </div>
       </div>
 
       {/* Summary Metrics Banner */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-3">
-            <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Total Findings</div>
-            <div className="text-xl font-bold text-white mt-1">{metrics.total_findings}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">{metrics.total_rounds} debate rounds</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        <div className="p-3.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] text-[#8a8378] font-mono uppercase tracking-wider">[01] FINDINGS</div>
+          <div className="text-xl font-serif text-[#f5f0e6] mt-1">{metrics.total_findings}</div>
+          <div className="text-[10px] text-[#6a6358] font-mono mt-0.5">{metrics.total_rounds} debate rounds</div>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-3">
-            <div className="text-[10px] text-emerald-400 font-mono uppercase tracking-wider flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-              <span>Accepted</span>
-            </div>
-            <div className="text-xl font-bold text-emerald-300 mt-1">{metrics.accepted_count}</div>
-            <div className="text-[10px] text-emerald-500/80 mt-0.5">Verified Defect</div>
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] text-[#5a9e6f] font-mono uppercase tracking-wider flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3 text-[#5a9e6f]" />
+            <span>ACCEPTED</span>
+          </div>
+          <div className="text-xl font-serif text-[#6cb582] mt-1">{metrics.accepted_count}</div>
+          <div className="text-[10px] text-[#5a9e6f]/80 font-mono mt-0.5">Verified Defect</div>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-3">
-            <div className="text-[10px] text-rose-400 font-mono uppercase tracking-wider flex items-center gap-1">
-              <XCircle className="w-3 h-3 text-rose-400" />
-              <span>Rejected</span>
-            </div>
-            <div className="text-xl font-bold text-rose-300 mt-1">{metrics.rejected_count}</div>
-            <div className="text-[10px] text-rose-500/80 mt-0.5">False Alarm Filtered</div>
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] text-[#c75a4a] font-mono uppercase tracking-wider flex items-center gap-1">
+            <XCircle className="w-3 h-3 text-[#c75a4a]" />
+            <span>REJECTED</span>
+          </div>
+          <div className="text-xl font-serif text-[#e06c5b] mt-1">{metrics.rejected_count}</div>
+          <div className="text-[10px] text-[#c75a4a]/80 font-mono mt-0.5">False Alarm Filtered</div>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-3">
-            <div className="text-[10px] text-amber-400 font-mono uppercase tracking-wider flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-amber-400" />
-              <span>Investigate</span>
-            </div>
-            <div className="text-xl font-bold text-amber-300 mt-1">{metrics.needs_investigation_count}</div>
-            <div className="text-[10px] text-amber-500/80 mt-0.5">Requires Context/Test</div>
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] text-[#e29b38] font-mono uppercase tracking-wider flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3 text-[#e29b38]" />
+            <span>INVESTIGATE</span>
+          </div>
+          <div className="text-xl font-serif text-[#f0af54] mt-1">{metrics.needs_investigation_count}</div>
+          <div className="text-[10px] text-[#e29b38]/80 font-mono mt-0.5">Requires Context</div>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-3">
-            <div className="text-[10px] text-purple-400 font-mono uppercase tracking-wider flex items-center gap-1">
-              <Layers className="w-3 h-3 text-purple-400" />
-              <span>Duplicate</span>
-            </div>
-            <div className="text-xl font-bold text-purple-300 mt-1">{metrics.duplicate_count}</div>
-            <div className="text-[10px] text-purple-500/80 mt-0.5">Grouped Collisions</div>
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] text-[#3a9e8f] font-mono uppercase tracking-wider flex items-center gap-1">
+            <Layers className="w-3 h-3 text-[#3a9e8f]" />
+            <span>DUPLICATE</span>
+          </div>
+          <div className="text-xl font-serif text-[#4db3a3] mt-1">{metrics.duplicate_count}</div>
+          <div className="text-[10px] text-[#3a9e8f]/80 font-mono mt-0.5">Linked Collisions</div>
+        </div>
 
-        <Card className="border-slate-800 bg-[#0c101c]">
-          <CardContent className="p-3">
-            <div className="text-[10px] text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1">
-              <HelpCircle className="w-3 h-3 text-slate-400" />
-              <span>Uncertain</span>
-            </div>
-            <div className="text-xl font-bold text-slate-300 mt-1">{metrics.uncertain_count}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">Inconclusive Evidence</div>
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-[2px] border border-[#26221c] bg-[#14120f]">
+          <div className="text-[10px] text-[#8a8378] font-mono uppercase tracking-wider flex items-center gap-1">
+            <HelpCircle className="w-3 h-3 text-[#8a8378]" />
+            <span>UNCERTAIN</span>
+          </div>
+          <div className="text-xl font-serif text-[#b8b0a2] mt-1">{metrics.uncertain_count}</div>
+          <div className="text-[10px] text-[#6a6358] font-mono mt-0.5">Inconclusive Proof</div>
+        </div>
       </div>
 
       {/* Review Pipeline Progress Stepper */}
-      <Card className="border-slate-800 bg-[#0c101c]">
+      <Card className="border-[#26221c] bg-[#13110e]">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-2">
-            <span className="font-semibold text-white flex items-center gap-1.5">
-              <Scale className="w-4 h-4 text-sky-400" />
+          <div className="flex items-center justify-between text-xs font-mono text-[#8a8378] mb-2.5">
+            <span className="font-medium text-[#f5f0e6] flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-[#d4a853]" />
               <span>Multi-Agent Deliberation Pipeline</span>
             </span>
-            <span className="text-emerald-400 font-bold">Consensus Reached ({metrics.consensus_rate}% Verified)</span>
+            <span className="text-[#5a9e6f]">Consensus Reached ({metrics.consensus_rate}% Verified)</span>
           </div>
-          <Progress value={100} className="h-1.5 mb-3" />
+          <Progress value={100} className="h-1 mb-3" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-[11px] font-mono">
-            <div className="p-2 rounded bg-slate-950/80 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>1. Parallel Specialist Passes</span>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-[10px] font-mono">
+            <div className="p-2 rounded-[2px] bg-[#171511] border border-[#28241d] text-[#b8b0a2] flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-3 h-3 text-[#5a9e6f] shrink-0" />
+              <span>1. Specialist Passes</span>
             </div>
-            <div className="p-2 rounded bg-slate-950/80 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>2. Duplicate Deduplication</span>
+            <div className="p-2 rounded-[2px] bg-[#171511] border border-[#28241d] text-[#b8b0a2] flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-3 h-3 text-[#5a9e6f] shrink-0" />
+              <span>2. Deduplication</span>
             </div>
-            <div className="p-2 rounded bg-slate-950/80 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>3. Reviewer 2 Cross-Exam</span>
+            <div className="p-2 rounded-[2px] bg-[#171511] border border-[#28241d] text-[#b8b0a2] flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-3 h-3 text-[#5a9e6f] shrink-0" />
+              <span>3. Cross-Examination</span>
             </div>
-            <div className="p-2 rounded bg-slate-950/80 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>4. Context & AST Proof</span>
+            <div className="p-2 rounded-[2px] bg-[#171511] border border-[#28241d] text-[#b8b0a2] flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-3 h-3 text-[#5a9e6f] shrink-0" />
+              <span>4. AST Proof</span>
             </div>
-            <div className="p-2 rounded bg-slate-950/80 border border-emerald-500/30 text-emerald-300 flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>5. Arbiter Evidence Verdict</span>
+            <div className="p-2 rounded-[2px] bg-[#171511] border border-[#28241d] text-[#b8b0a2] flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-3 h-3 text-[#5a9e6f] shrink-0" />
+              <span>5. Arbiter Verdict</span>
             </div>
           </div>
         </CardContent>
@@ -774,39 +664,39 @@ export const AgentConference: React.FC = () => {
 
       {/* Active Agent Council Panel */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <Bot className="w-4 h-4 text-sky-400" />
+        <div className="flex items-center justify-between mb-3 font-mono">
+          <h2 className="text-xs uppercase tracking-wider text-[#d4a853] flex items-center gap-2 font-medium">
+            <Bot className="w-4 h-4 text-[#d4a853]" />
             <span>Active Agent Council ({agents.length} Autonomous Specialists)</span>
           </h2>
-          <span className="text-xs font-mono text-slate-500">Evidence Standard: Bounded Non-Majority Proof</span>
+          <span className="text-[11px] text-[#6a6358]">Standard: Bounded Non-Majority Proof</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
           {agents.map((agent) => (
-            <Card key={agent.id} className="border-slate-800/90 bg-[#0c101c] hover:border-slate-700 transition">
+            <Card key={agent.id} className="border-[#26221c] bg-[#13110e] hover:border-[#383229] transition-colors">
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-[2px] bg-[#1b1915] border border-[#2e2a24] flex items-center justify-center">
                     {getAgentIcon(agent.agent_name || agent.role)}
                   </div>
-                  <Badge variant="purple" className="text-[9px] py-0 font-mono">
-                    {Math.round(agent.confidence_score <= 1.0 ? agent.confidence_score * 100 : agent.confidence_score)}% conf
+                  <Badge variant="outline" className="text-[9px] py-0 font-mono">
+                    {Math.round(agent.confidence_score <= 1.0 ? agent.confidence_score * 100 : agent.confidence_score)}%
                   </Badge>
                 </div>
 
                 <div>
-                  <div className="font-bold text-white text-xs truncate" title={agent.agent_name}>
+                  <div className="font-mono text-xs font-medium text-[#f5f0e6] truncate" title={agent.agent_name}>
                     {agent.agent_name}
                   </div>
-                  <div className="text-[10px] text-slate-400 truncate" title={agent.role}>
+                  <div className="text-[10px] text-[#8a8378] truncate mt-0.5" title={agent.role}>
                     {agent.role}
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500 font-mono flex items-center justify-between border-t border-slate-800/80 pt-1.5">
-                  <span className="truncate">{agent.model_name || 'llm-arbiter'}</span>
-                  <span className="text-emerald-400 font-semibold">{agent.status}</span>
+                <div className="text-[10px] text-[#6a6358] font-mono flex items-center justify-between border-t border-[#221f1a] pt-1.5">
+                  <span className="truncate">{agent.model_name?.replace('claude-', '') || 'arbiter'}</span>
+                  <span className="text-[#5a9e6f]">{agent.status}</span>
                 </div>
               </CardContent>
             </Card>
@@ -815,27 +705,27 @@ export const AgentConference: React.FC = () => {
       </div>
 
       {/* Deliberation Threads Section */}
-      <Card className="border-slate-800/90 bg-[#0c101c]">
-        <CardHeader className="pb-3 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <Card className="border-[#26221c] bg-[#13110e]">
+        <CardHeader className="pb-3 border-b border-[#221f1a] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-indigo-400" />
-              <span>Evidence-Based Deliberation Timeline & Threads</span>
+            <CardTitle className="text-base font-serif text-[#f5f0e6] flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#d4a853]" />
+              <span>Evidence-Based Deliberation Timeline</span>
             </CardTitle>
-            <CardDescription className="text-xs">
-              Every finding undergoes adversarial cross-examination before final verdict formulation.
+            <CardDescription className="text-xs text-[#8a8378]">
+              Every finding undergoes adversarial cross-examination before final verdict formulation
             </CardDescription>
           </div>
 
           {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1 font-mono">
             {(['All', 'Accepted', 'Rejected', 'Needs investigation', 'Duplicate', 'Uncertain'] as const).map((filter) => (
               <Button
                 key={filter}
                 variant={stateFilter === filter ? 'electric' : 'ghost'}
                 size="sm"
                 onClick={() => setStateFilter(filter)}
-                className="h-7 px-2.5 text-[11px] rounded-md font-mono"
+                className="h-7 px-2.5 text-[11px] rounded-[2px] font-mono"
               >
                 {filter}
               </Button>
@@ -845,7 +735,7 @@ export const AgentConference: React.FC = () => {
 
         <CardContent className="p-4 space-y-4">
           {displayedThreads.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-xs font-mono">
+            <div className="text-center py-12 text-[#6a6358] text-xs font-mono">
               No findings matching the &quot;{stateFilter}&quot; filter.
             </div>
           ) : (
@@ -856,18 +746,18 @@ export const AgentConference: React.FC = () => {
                 return (
                   <div
                     key={thread.finding_id}
-                    className="border border-slate-800/90 rounded-xl bg-slate-950/40 overflow-hidden transition"
+                    className="border border-[#26221c] rounded-[2px] bg-[#14120f] overflow-hidden transition-colors"
                   >
                     {/* Thread Header */}
                     <div
                       onClick={() => toggleThread(thread.finding_id)}
-                      className="p-3.5 bg-slate-900/60 hover:bg-slate-900 cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-2.5 border-b border-slate-800/70"
+                      className="p-3.5 bg-[#171511] hover:bg-[#1b1915] cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-2.5 border-b border-[#221f1a]"
                     >
                       <div className="flex items-center gap-2.5">
                         <button
                           type="button"
                           aria-label={isExpanded ? 'Collapse deliberation thread' : 'Expand deliberation thread'}
-                          className="text-slate-400 hover:text-white"
+                          className="text-[#8a8378] hover:text-[#f5f0e6]"
                         >
                           <ChevronDown
                             className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -875,7 +765,7 @@ export const AgentConference: React.FC = () => {
                         </button>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-white">{thread.title}</span>
+                            <span className="font-serif text-base text-[#f5f0e6]">{thread.title}</span>
                             <Badge
                               variant={
                                 thread.severity === 'critical'
@@ -884,20 +774,20 @@ export const AgentConference: React.FC = () => {
                                   ? 'warning'
                                   : 'secondary'
                               }
-                              className="text-[9px] py-0 uppercase"
+                              className="text-[9px] py-0 uppercase font-mono"
                             >
                               {thread.severity}
                             </Badge>
-                            <Badge variant="outline" className="text-[9px] py-0 text-slate-400 border-slate-700">
+                            <Badge variant="outline" className="text-[9px] py-0 text-[#8a8378] border-[#332e26] font-mono">
                               {thread.category}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono mt-1">
-                            <span className="text-sky-300">
+                          <div className="flex items-center gap-2 text-[10px] text-[#787165] font-mono mt-1">
+                            <span className="text-[#d4a853]">
                               {thread.file_path}
                               {thread.line_number ? `:${thread.line_number}` : ''}
                             </span>
-                            <span>•</span>
+                            <span>·</span>
                             <span>Proposed by {thread.proposing_agent}</span>
                           </div>
                         </div>
@@ -905,7 +795,7 @@ export const AgentConference: React.FC = () => {
 
                       <div className="flex items-center gap-2 shrink-0">
                         {getStateBadge(thread.discussion_state)}
-                        <span className="text-[10px] font-mono text-slate-500">
+                        <span className="text-[10px] font-mono text-[#6a6358]">
                           {thread.messages.length} messages
                         </span>
                       </div>
@@ -916,12 +806,12 @@ export const AgentConference: React.FC = () => {
                       <div className="p-4 space-y-3">
                         {/* Evidence & Suggested Patch Callout if available */}
                         {thread.evidence && (
-                          <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono">
-                            <div className="text-[10px] font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                              <FileCode className="w-3.5 h-3.5 text-sky-400" />
+                          <div className="p-3 rounded-[2px] bg-[#0c0a09] border border-[#24201a] text-xs font-mono">
+                            <div className="text-[10px] text-[#8a8378] mb-1 flex items-center gap-1.5">
+                              <FileCode className="w-3.5 h-3.5 text-[#3a9e8f]" />
                               <span>AST & Diff Code Grounding Evidence:</span>
                             </div>
-                            <pre className="text-emerald-300/90 overflow-x-auto text-[11px] leading-relaxed p-1">
+                            <pre className="text-[#6cb582] overflow-x-auto text-[11px] leading-relaxed p-1">
                               {thread.evidence}
                             </pre>
                           </div>
@@ -937,24 +827,24 @@ export const AgentConference: React.FC = () => {
                             return (
                               <div
                                 key={msg.id}
-                                className={`p-3 rounded-lg border text-xs leading-relaxed transition ${
+                                className={`p-3.5 rounded-[2px] border text-xs leading-relaxed transition ${
                                   isVerdict
-                                    ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-100'
+                                    ? 'border-[#5a9e6f]/40 bg-[#142017] text-[#e0f2e5]'
                                     : isChallenge
-                                    ? 'border-amber-500/30 bg-amber-950/15 text-amber-100'
+                                    ? 'border-[#e29b38]/30 bg-[#221b12] text-[#fbf0df]'
                                     : isContext
-                                    ? 'border-cyan-500/30 bg-cyan-950/15 text-cyan-100'
-                                    : 'border-slate-800/80 bg-slate-900/50 text-slate-200'
+                                    ? 'border-[#3a9e8f]/30 bg-[#121c1a] text-[#daf2ee]'
+                                    : 'border-[#26221c] bg-[#161410] text-[#d8d2c4]'
                                 }`}
                               >
                                 <div className="flex items-center justify-between mb-1.5 text-[11px] font-mono">
-                                  <div className="flex items-center gap-2 font-semibold">
+                                  <div className="flex items-center gap-2">
                                     {getAgentIcon(msg.agent_name)}
-                                    <span className="text-white">{msg.agent_name}</span>
+                                    <span className="text-[#f5f0e6] font-medium">{msg.agent_name}</span>
                                     {getPositionBadge(msg.position)}
-                                    <span className="text-[10px] text-slate-500">R{msg.round_number}</span>
+                                    <span className="text-[10px] text-[#6a6358]">R{msg.round_number}</span>
                                   </div>
-                                  <span className="text-slate-500 text-[10px]">
+                                  <span className="text-[#6a6358] text-[10px]">
                                     {new Date(msg.created_at).toLocaleTimeString([], {
                                       hour: '2-digit',
                                       minute: '2-digit',
@@ -963,12 +853,12 @@ export const AgentConference: React.FC = () => {
                                   </span>
                                 </div>
 
-                                <p className="font-sans text-xs text-slate-300">{msg.content}</p>
+                                <p className="font-sans text-xs text-[#b8b0a2]">{msg.content}</p>
 
                                 {msg.source_reference && (
-                                  <div className="mt-2 text-[10px] font-mono text-slate-400 flex items-center gap-1.5 bg-black/40 px-2 py-1 rounded w-fit border border-slate-800/60">
-                                    <span className="text-slate-500">Ref:</span>
-                                    <span className="text-sky-300">{msg.source_reference}</span>
+                                  <div className="mt-2 text-[10px] font-mono text-[#8a8378] flex items-center gap-1.5 bg-[#0e0d0b] px-2 py-0.5 rounded-[2px] w-fit border border-[#221f1a]">
+                                    <span className="text-[#6a6358]">Ref:</span>
+                                    <span className="text-[#d4a853]">{msg.source_reference}</span>
                                   </div>
                                 )}
                               </div>
@@ -984,16 +874,16 @@ export const AgentConference: React.FC = () => {
           )}
 
           {/* Interactive Human Intervention Prompt */}
-          <form onSubmit={handleHumanIntervention} className="pt-3 border-t border-slate-800/80 flex items-center gap-2">
+          <form onSubmit={handleHumanIntervention} className="pt-3 border-t border-[#221f1a] flex items-center gap-2 font-mono">
             <input
               type="text"
-              placeholder="Inject context or ask the council to reconsider (e.g. 'Is repository_service protected by query parameter sanitizer in API gateway?')..."
+              placeholder="Inject context or request council cross-examination (e.g. 'Is repository_service sanitized in API gateway?')..."
               value={userPrompt}
               onChange={(e) => setUserPrompt(e.target.value)}
-              className="flex-1 h-9 rounded-lg border border-slate-800 bg-[#080c14] px-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="flex-1 h-8 rounded-[2px] border border-[#2e2a24] bg-[#12100d] px-3 text-xs text-[#f5f0e6] placeholder:text-[#6a6358] focus:outline-none focus:border-[#d4a853]"
             />
-            <Button type="submit" variant="electric" size="sm" className="h-9 px-4 text-xs font-semibold">
-              <Send className="w-3.5 h-3.5 mr-1" />
+            <Button type="submit" variant="electric" size="sm" className="h-8 px-4 text-xs font-mono font-medium">
+              <Send className="w-3.5 h-3.5 mr-1 text-[#0e0d0b]" />
               <span>Intervene</span>
             </Button>
           </form>

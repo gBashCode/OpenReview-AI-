@@ -3,26 +3,30 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none select-none font-mono tracking-tight",
+  "inline-flex items-center rounded-[2px] border px-2 py-0.5 text-[11px] font-mono tracking-tight font-medium transition-colors select-none",
   {
     variants: {
       variant: {
         default:
-          "border-sky-500/30 bg-sky-500/10 text-sky-400",
+          "border-[#d4a853]/40 bg-[#d4a853]/10 text-[#e5be6b]",
         secondary:
-          "border-slate-800 bg-slate-900/80 text-slate-300",
+          "border-[#2a2621] bg-[#1a1815] text-[#b8b0a2]",
         purple:
-          "border-purple-500/30 bg-purple-500/10 text-purple-400",
+          "border-[#3a9e8f]/40 bg-[#3a9e8f]/10 text-[#4db3a3]",
+        teal:
+          "border-[#3a9e8f]/40 bg-[#3a9e8f]/10 text-[#4db3a3]",
+        amber:
+          "border-[#d4a853]/40 bg-[#d4a853]/10 text-[#e5be6b]",
         electric:
-          "border-indigo-500/30 bg-indigo-500/10 text-indigo-300",
+          "border-[#d4a853]/50 bg-[#241f16] text-[#f2cb7c]",
         destructive:
-          "border-rose-500/30 bg-rose-500/10 text-rose-400",
+          "border-[#c75a4a]/40 bg-[#c75a4a]/10 text-[#e06c5b]",
         warning:
-          "border-amber-500/30 bg-amber-500/10 text-amber-400",
+          "border-[#e29b38]/40 bg-[#e29b38]/10 text-[#f0af54]",
         success:
-          "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+          "border-[#5a9e6f]/40 bg-[#5a9e6f]/10 text-[#6cb582]",
         outline:
-          "border-slate-700 bg-transparent text-slate-300",
+          "border-[#36312a] bg-transparent text-[#9e9689]",
       },
     },
     defaultVariants: {

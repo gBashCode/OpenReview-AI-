@@ -18,10 +18,6 @@ import {
   ArrowRight,
   Sparkles,
   Search,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  Filter,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
@@ -57,7 +53,6 @@ export const PullRequests: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['pull-requests'] });
       setShowCreate(false);
       success('PR Simulated', `Pull Request #${newPr.pr_number} created.`);
-      // Auto-trigger review pass
       reviewApi.createReview(newPr.id, newPr.head_sha).then((rev: Review) => {
         navigate(`/reviews/${rev.id}`);
       });
@@ -111,13 +106,20 @@ export const PullRequests: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 animate-in fade-in duration-300">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#26221c]">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Pull Request Reviews</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Active and historical pull requests evaluated by OpenReview AI autonomous agents.
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono tracking-widest text-[#d4a853] uppercase">[LEDGER · 03]</span>
+            <div className="h-2.5 w-px bg-[#36312a]" />
+            <span className="text-[10px] font-mono tracking-wider text-[#8a8378] uppercase">Review Queue</span>
+          </div>
+          <h1 className="text-3xl font-serif font-normal text-[#f5f0e6] tracking-tight mt-1">
+            Pull Request Reviews
+          </h1>
+          <p className="text-xs text-[#8a8378] mt-1.5 leading-relaxed">
+            Active and historical pull requests evaluated across AST diffs, static rules, and multi-agent debates.
           </p>
         </div>
 
@@ -125,9 +127,9 @@ export const PullRequests: React.FC = () => {
           <Button
             onClick={() => setShowCreate(true)}
             variant="electric"
-            className="flex items-center gap-1.5 text-xs font-semibold"
+            className="flex items-center gap-1.5 text-xs font-mono font-medium"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 text-[#0e0d0b]" />
             <span>Simulate Pull Request</span>
           </Button>
         </div>
@@ -135,21 +137,21 @@ export const PullRequests: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-1 max-w-lg">
+        <div className="flex items-center gap-2.5 flex-1 max-w-lg">
           <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#6a6358]" />
             <Input
               placeholder="Search by title, author, or #PR number..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-8 text-xs bg-[#0b101c]"
+              className="pl-9 h-8 text-xs font-mono bg-[#14120f] border-[#26221c]"
             />
           </div>
 
           <select
             value={repoFilter}
             onChange={(e) => setRepoFilter(e.target.value)}
-            className="h-8 rounded-md border border-slate-700 bg-[#0e1422] px-2.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="h-8 rounded-[2px] border border-[#2a2621] bg-[#14120f] px-2.5 text-xs font-mono text-[#b8b0a2] focus:outline-none focus:border-[#d4a853]"
           >
             <option value="all">All Repositories</option>
             {repos?.map((r) => (
@@ -160,15 +162,15 @@ export const PullRequests: React.FC = () => {
           </select>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-[#0e1422] p-1 rounded-lg border border-slate-800 text-xs">
+        <div className="flex items-center gap-1 bg-[#14120f] p-1 rounded-[2px] border border-[#26221c] text-xs font-mono">
           {(['all', 'open', 'merged', 'closed'] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-2.5 py-1 rounded capitalize text-[11px] transition ${
+              className={`px-3 py-1 rounded-[2px] capitalize text-[11px] transition-colors ${
                 statusFilter === s
-                  ? 'bg-sky-500/20 text-sky-400 font-semibold'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#221f1a] text-[#d4a853] font-medium border border-[#38332a]'
+                  : 'text-[#8a8378] hover:text-[#d8d2c4]'
               }`}
             >
               {s}
@@ -180,62 +182,62 @@ export const PullRequests: React.FC = () => {
       {/* PR List */}
       <div className="space-y-3">
         {isLoading ? (
-          <div className="p-12 text-center text-slate-500 font-mono text-xs">
-            Loading pull requests...
+          <div className="p-12 text-center text-[#6a6358] font-mono text-xs">
+            Querying pull request telemetry...
           </div>
         ) : !filteredPRs || filteredPRs.length === 0 ? (
-          <Card className="p-12 text-center border-dashed border-slate-800 bg-[#0c101c]">
-            <GitPullRequest className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-white">No pull requests found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Click &quot;Simulate Pull Request&quot; above to simulate an incoming GitHub webhook review.
+          <Card className="p-12 text-center border-dashed border-[#2e2a24] bg-[#14120f]">
+            <GitPullRequest className="w-8 h-8 text-[#6a6358] mx-auto mb-3" />
+            <h3 className="text-base font-serif text-[#f5f0e6]">No pull requests found</h3>
+            <p className="text-xs text-[#8a8378] mt-1 max-w-sm mx-auto font-mono">
+              Click &quot;Simulate Pull Request&quot; to test the multi-agent review pipeline.
             </p>
           </Card>
         ) : (
           filteredPRs.map((pr: PullRequest) => (
             <Card
               key={pr.id}
-              className="border-slate-800/90 bg-[#0c101c] hover:border-slate-700/80 transition"
+              className="border-[#26221c] bg-[#13110e] hover:border-[#383229] transition-colors"
             >
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <div className="w-9 h-9 rounded-[2px] bg-[#1b1915] border border-[#332e26] flex items-center justify-center text-[#3a9e8f]">
                     <GitPullRequest className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-white text-xs">#{pr.pr_number}</span>
-                      <span className="font-semibold text-slate-200 text-sm">{pr.title}</span>
+                      <span className="font-mono text-xs text-[#d4a853]">#{pr.pr_number}</span>
+                      <span className="font-serif text-base text-[#f5f0e6]">{pr.title}</span>
                       <Badge
                         variant={pr.state === 'open' ? 'success' : 'outline'}
-                        className="text-[10px] py-0 capitalize"
+                        className="text-[10px] py-0 capitalize font-mono"
                       >
                         {pr.state}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-500 font-mono mt-1">
-                      <span className="flex items-center gap-1 text-slate-400">
-                        <User className="w-3 h-3 text-slate-500" />
+                    <div className="flex items-center gap-3 text-[11px] text-[#787165] font-mono mt-1">
+                      <span className="flex items-center gap-1 text-[#a69e90]">
+                        <User className="w-3 h-3 text-[#6a6358]" />
                         {pr.author_username}
                       </span>
-                      <span>•</span>
+                      <span>·</span>
                       <span>{pr.head_branch} &rarr; {pr.base_branch}</span>
-                      <span>•</span>
+                      <span>·</span>
                       <span className="flex items-center gap-1">
-                        <GitCommit className="w-3 h-3 text-slate-500" />
+                        <GitCommit className="w-3 h-3 text-[#6a6358]" />
                         {pr.head_sha.substring(0, 7)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handleAnalyzePR(pr.id)}
                     isLoading={analyzingPrId === pr.id}
-                    className="text-xs font-medium"
+                    className="text-xs font-mono border-[#2e2a24]"
                   >
                     Analyze Impact
                   </Button>
@@ -247,11 +249,11 @@ export const PullRequests: React.FC = () => {
                       const rev = await reviewApi.createReview(pr.id, pr.head_sha);
                       navigate(`/reviews/${rev.id}`);
                     }}
-                    className="flex items-center gap-1.5 text-xs font-semibold"
+                    className="flex items-center gap-1.5 text-xs font-mono font-medium"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <Sparkles className="w-3.5 h-3.5 text-[#0e0d0b]" />
                     <span>Inspect Review</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#0e0d0b]" />
                   </Button>
                 </div>
               </CardContent>
@@ -263,39 +265,39 @@ export const PullRequests: React.FC = () => {
       {/* Analysis Result Dialog */}
       <Dialog open={!!analysisResult} onOpenChange={(open) => !open && setAnalysisResult(null)}>
         <DialogHeader>
-          <DialogTitle>PR Impact & Risk Analysis</DialogTitle>
+          <DialogTitle>PR Impact & Risk Ledger</DialogTitle>
           <DialogDescription>
-            Autonomous static diff inspection, risk scoring, and review agent routing plan.
+            Static diff analysis, algorithmic complexity profiling, and agent dispatch recommendations.
           </DialogDescription>
         </DialogHeader>
 
         {analysisResult && (
-          <div className="space-y-4 text-xs">
+          <div className="space-y-4 text-xs font-mono">
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-400 block text-[11px]">Explainable Risk Score</span>
-                <span className="text-xl font-bold font-mono text-amber-400">
-                  {analysisResult.risk_score ?? 0}/100
+              <div className="p-3.5 rounded-[2px] bg-[#181512] border border-[#2a2620]">
+                <span className="text-[#8a8378] block text-[11px]">Explainable Risk Score</span>
+                <span className="text-2xl font-serif text-[#f0af54]">
+                  {analysisResult.risk_score ?? 0} / 100
                 </span>
               </div>
-              <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-400 block text-[11px]">Complexity Score</span>
-                <span className="text-xl font-bold font-mono text-sky-400">
-                  {analysisResult.complexity_score ?? 0}/100
+              <div className="p-3.5 rounded-[2px] bg-[#181512] border border-[#2a2620]">
+                <span className="text-[#8a8378] block text-[11px]">Complexity Score</span>
+                <span className="text-2xl font-serif text-[#d4a853]">
+                  {analysisResult.complexity_score ?? 0} / 100
                 </span>
               </div>
             </div>
 
             <div>
-              <span className="text-slate-400 font-semibold block mb-1">Executive Summary</span>
-              <p className="p-2.5 rounded bg-slate-950 border border-slate-800 text-slate-300">
+              <span className="text-[#8a8378] block mb-1">Executive Summary</span>
+              <p className="p-3 rounded-[2px] bg-[#161410] border border-[#26221c] text-[#d8d2c4] leading-relaxed font-sans text-xs">
                 {analysisResult.pr_summary || 'No summary available.'}
               </p>
             </div>
 
             {analysisResult.risk_factors && analysisResult.risk_factors.length > 0 && (
               <div>
-                <span className="text-slate-400 font-semibold block mb-1">Risk Factors</span>
+                <span className="text-[#8a8378] block mb-1">Risk Factors</span>
                 <div className="flex flex-wrap gap-1.5">
                   {analysisResult.risk_factors.map((factor: string, idx: number) => (
                     <Badge key={idx} variant="warning" className="text-[10px]">
@@ -308,7 +310,7 @@ export const PullRequests: React.FC = () => {
 
             {analysisResult.recommended_agents && analysisResult.recommended_agents.length > 0 && (
               <div>
-                <span className="text-slate-400 font-semibold block mb-1">Recommended Review Agents</span>
+                <span className="text-[#8a8378] block mb-1">Recommended Review Agents</span>
                 <div className="flex flex-wrap gap-1.5">
                   {analysisResult.recommended_agents.map((agent: string, idx: number) => (
                     <Badge key={idx} variant="purple" className="text-[10px]">
@@ -320,7 +322,7 @@ export const PullRequests: React.FC = () => {
             )}
 
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setAnalysisResult(null)}>
+              <Button variant="ghost" onClick={() => setAnalysisResult(null)} className="font-mono text-xs">
                 Close
               </Button>
             </DialogFooter>
@@ -333,19 +335,19 @@ export const PullRequests: React.FC = () => {
         <DialogHeader>
           <DialogTitle>Simulate Pull Request Event</DialogTitle>
           <DialogDescription>
-            Simulates an incoming pull_request.opened webhook event from GitHub to trigger the multi-agent code review workflow.
+            Simulates a pull_request.opened webhook event from GitHub to trigger the multi-agent code review workflow.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleCreatePR} className="space-y-4">
+        <form onSubmit={handleCreatePR} className="space-y-4 font-mono text-xs">
           <div>
-            <label className="block text-[11px] font-medium text-slate-300 mb-1">
+            <label className="block text-[11px] text-[#8a8378] mb-1">
               Connected Repository
             </label>
             <select
               value={selectedRepoId}
               onChange={(e) => setSelectedRepoId(e.target.value)}
-              className="w-full h-8 rounded-md border border-slate-700 bg-slate-950 px-3 text-xs text-white focus:outline-none focus:ring-1 focus:ring-sky-500"
+              className="w-full h-8 rounded-[2px] border border-[#2a2621] bg-[#161411] px-3 text-xs text-[#f5f0e6] focus:outline-none focus:border-[#d4a853]"
               required
             >
               <option value="">Select a repository...</option>
@@ -359,7 +361,7 @@ export const PullRequests: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] text-[#8a8378] mb-1">
                 PR Number
               </label>
               <Input
@@ -370,7 +372,7 @@ export const PullRequests: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-slate-300 mb-1">
+              <label className="block text-[11px] text-[#8a8378] mb-1">
                 Author
               </label>
               <Input
@@ -382,7 +384,7 @@ export const PullRequests: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-medium text-slate-300 mb-1">
+            <label className="block text-[11px] text-[#8a8378] mb-1">
               Pull Request Title
             </label>
             <Input

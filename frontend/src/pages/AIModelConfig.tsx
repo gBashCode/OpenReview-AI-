@@ -7,26 +7,24 @@ import { Badge } from '@/components/ui/badge';
 import { aiApi } from '@/services/aiApi';
 import {
   Cpu,
-  Key,
   Sliders,
-  CheckCircle2,
   Sparkles,
-  Bot,
-  Zap,
   Save,
-  RotateCw,
-  Terminal,
   Activity,
-  AlertCircle,
+  Server,
+  Zap,
+  CheckCircle2,
+  Clock,
+  Layers,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
 const PROVIDERS = [
-  { id: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini', desc: 'GPT-4o, GPT-4o-mini, o1-preview' },
-  { id: 'anthropic', label: 'Anthropic', defaultModel: 'claude-3-5-sonnet-20241022', desc: 'Claude 3.5 Sonnet, 3.5 Haiku' },
-  { id: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-1.5-pro', desc: 'Gemini 1.5 Pro, Gemini 1.5 Flash' },
-  { id: 'groq', label: 'Groq', defaultModel: 'llama-3.3-70b-versatile', desc: 'Ultra-low latency Llama 3.3 70B inference' },
-  { id: 'ollama', label: 'Local Ollama', defaultModel: 'deepseek-r1:14b', desc: 'Self-hosted airgapped local execution' },
+  { id: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini', desc: 'GPT-4o, GPT-4o-mini, o1 reasoning engines' },
+  { id: 'anthropic', label: 'Anthropic', defaultModel: 'claude-3-5-sonnet-20241022', desc: 'Claude 3.5 Sonnet, 3.5 Haiku high-accuracy analysis' },
+  { id: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-1.5-pro', desc: 'Gemini 1.5 Pro 2M token context window architecture' },
+  { id: 'groq', label: 'Groq LPUs', defaultModel: 'llama-3.3-70b-versatile', desc: 'Sub-second Llama 3.3 70B inference engine' },
+  { id: 'ollama', label: 'Local Ollama', defaultModel: 'deepseek-r1:14b', desc: 'Self-hosted air-gapped local execution on private hardware' },
 ];
 
 export const AIModelConfig: React.FC = () => {
@@ -39,7 +37,7 @@ export const AIModelConfig: React.FC = () => {
   const [isTesting, setIsTesting] = useState(false);
 
   // Queries for live backend AI infrastructure
-  const { data: healthData, refetch: refetchHealth, isFetching: fetchingHealth } = useQuery({
+  const { data: healthData, isFetching: fetchingHealth } = useQuery({
     queryKey: ['ai-health'],
     queryFn: aiApi.checkHealth,
     refetchInterval: 30000,
@@ -64,12 +62,12 @@ export const AIModelConfig: React.FC = () => {
       if (providerStat && providerStat.is_healthy) {
         success(
           'LLM Provider Verified',
-          `Connection to ${activeProvider.toUpperCase()} succeeded (${providerStat.latency_ms}ms latency).`
+          `Connection to ${activeProvider.toUpperCase()} succeeded (${providerStat.latency_ms}ms roundtrip latency).`
         );
       } else {
         info(
           'Provider Evaluated',
-          providerStat?.message || `Provider ${activeProvider} is configured with mock fallback.`
+          providerStat?.message || `Provider ${activeProvider} is configured with simulated fallback mode.`
         );
       }
     } catch (err: any) {
@@ -80,20 +78,28 @@ export const AIModelConfig: React.FC = () => {
   };
 
   const handleSaveSettings = () => {
-    success('Configuration Saved', `Provider ${activeProvider} (${modelName}) persisted to environment profile.`);
+    success('Configuration Saved', `Provider ${activeProvider.toUpperCase()} (${modelName}) persisted to environment profile.`);
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4 border-b border-[#2a2621]">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold text-white tracking-tight">AI Model Infrastructure</h1>
-            <Badge variant="purple">Multi-Provider Router</Badge>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="font-mono text-[10px] tracking-[0.2em] text-[#d4a853] uppercase font-bold">
+              [LEDGER · 11 · INFERENCE ARCHITECTURE]
+            </span>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#5a9e6f]" />
+            <span className="font-mono text-[10px] tracking-wider text-[#8c8273] uppercase">
+              MULTI-PROVIDER ROUTER ACTIVE
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Configure LLM backends (OpenAI, Gemini, Anthropic, Groq, Ollama), token budgets, and prompts.
+          <h1 className="font-serif text-3xl font-normal text-[#f4efe6] tracking-tight">
+            AI Engine & Provider Routing
+          </h1>
+          <p className="font-sans text-xs text-[#8c8273] mt-1 max-w-2xl">
+            Configure LLM backends (OpenAI, Gemini, Anthropic, Groq, Ollama), token budgets, and consensus parameters.
           </p>
         </div>
 
@@ -103,126 +109,170 @@ export const AIModelConfig: React.FC = () => {
             size="sm"
             onClick={handleTestConnection}
             isLoading={isTesting || fetchingHealth}
-            className="flex items-center gap-1.5 text-xs"
+            className="flex items-center gap-1.5 font-sans text-xs"
           >
-            <Activity className="w-3.5 h-3.5 text-sky-400" />
-            <span>Probe Health</span>
+            <Activity className="w-3.5 h-3.5 text-[#d4a853]" />
+            <span>Probe Latency</span>
           </Button>
 
           <Button
             variant="electric"
             size="sm"
             onClick={handleSaveSettings}
-            className="flex items-center gap-1.5 text-xs font-semibold"
+            className="flex items-center gap-1.5 font-sans text-xs"
           >
-            <Save className="w-3.5 h-3.5 text-amber-300" />
-            <span>Save Settings</span>
+            <Save className="w-3.5 h-3.5 text-[#0e0d0b]" />
+            <span>Persist Config</span>
           </Button>
         </div>
       </div>
 
-      {/* Live AI Token & Cost Card */}
+      {/* Live Token & Cost Metric Ledger */}
       {usage && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-          <Card className="border-slate-800 bg-[#0c101c]">
-            <CardContent className="p-4">
-              <div className="text-xs text-slate-400 mb-1">Token Budget Cap</div>
-              <div className="text-xl font-bold font-mono text-white">
-                {usage.token_budget.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-800 bg-[#0c101c]">
-            <CardContent className="p-4">
-              <div className="text-xs text-slate-400 mb-1">Tokens Consumed</div>
-              <div className="text-xl font-bold font-mono text-sky-400">
-                {usage.total_tokens_consumed.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-800 bg-[#0c101c]">
-            <CardContent className="p-4">
-              <div className="text-xs text-slate-400 mb-1">Estimated AI Spend</div>
-              <div className="text-xl font-bold font-mono text-emerald-400">
-                ${usage.total_cost_usd.toFixed(4)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-800 bg-[#0c101c]">
-            <CardContent className="p-4">
-              <div className="text-xs text-slate-400 mb-1">Budget Remaining</div>
-              <div className="text-xl font-bold font-mono text-purple-400">
-                {usage.budget_remaining.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#14120f] relative overflow-hidden">
+            <div className="font-mono text-[10px] tracking-wider text-[#8c8273] uppercase mb-1">
+              [I] TOKEN ALLOCATION CAP
+            </div>
+            <div className="font-mono text-2xl font-normal text-[#f4efe6]">
+              {usage.token_budget.toLocaleString()}
+            </div>
+            <div className="font-sans text-[11px] text-[#5a5247] mt-1">
+              Monthly enterprise allowance
+            </div>
+          </div>
+
+          <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#14120f] relative overflow-hidden">
+            <div className="font-mono text-[10px] tracking-wider text-[#8c8273] uppercase mb-1">
+              [II] TOKENS CONSUMED
+            </div>
+            <div className="font-mono text-2xl font-normal text-[#d4a853]">
+              {usage.total_tokens_consumed.toLocaleString()}
+            </div>
+            <div className="font-sans text-[11px] text-[#5a5247] mt-1">
+              Deliberation & patch generation
+            </div>
+          </div>
+
+          <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#14120f] relative overflow-hidden">
+            <div className="font-mono text-[10px] tracking-wider text-[#8c8273] uppercase mb-1">
+              [III] ESTIMATED AI SPEND
+            </div>
+            <div className="font-mono text-2xl font-normal text-[#5a9e6f]">
+              ${usage.total_cost_usd.toFixed(4)}
+            </div>
+            <div className="font-sans text-[11px] text-[#5a5247] mt-1">
+              Calculated on token rates
+            </div>
+          </div>
+
+          <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#14120f] relative overflow-hidden">
+            <div className="font-mono text-[10px] tracking-wider text-[#8c8273] uppercase mb-1">
+              [IV] REMAINING QUOTA
+            </div>
+            <div className="font-mono text-2xl font-normal text-[#3a9e8f]">
+              {usage.budget_remaining.toLocaleString()}
+            </div>
+            <div className="font-sans text-[11px] text-[#5a5247] mt-1">
+              Available before rate cap
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Providers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {PROVIDERS.map((prov) => {
-          const healthStat = healthData ? healthData[prov.id] : null;
-          const isSelected = activeProvider === prov.id;
-          return (
-            <button
-              key={prov.id}
-              onClick={() => {
-                setActiveProvider(prov.id);
-                setModelName(prov.defaultModel);
-              }}
-              className={`p-4 rounded-xl border text-left transition relative ${
-                isSelected
-                  ? 'border-sky-500 bg-sky-950/20 shadow-lg shadow-sky-500/10'
-                  : 'border-slate-800 bg-[#0c101c] hover:border-slate-700'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-bold text-white text-xs">{prov.label}</span>
-                {healthStat?.is_healthy ? (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Healthy" />
-                ) : (
-                  <span className="w-2 h-2 rounded-full bg-amber-400" title="Fallback ready" />
-                )}
-              </div>
-              <p className="text-[11px] text-slate-400 leading-snug">{prov.desc}</p>
-              <div className="mt-3 font-mono text-[10px] text-slate-500 truncate">
-                Default: {prov.defaultModel}
-              </div>
-            </button>
-          );
-        })}
+      {/* Provider Selector Cards */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="font-mono text-[10px] tracking-widest text-[#8c8273] uppercase font-bold">
+            Select Active Inference Provider
+          </span>
+          <span className="font-mono text-[10px] text-[#5a5247]">
+            AUTOMATIC FAILOVER ENABLED
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          {PROVIDERS.map((prov) => {
+            const healthStat = healthData ? healthData[prov.id] : null;
+            const isSelected = activeProvider === prov.id;
+            return (
+              <button
+                key={prov.id}
+                onClick={() => {
+                  setActiveProvider(prov.id);
+                  setModelName(prov.defaultModel);
+                }}
+                className={`p-3.5 rounded-[3px] border text-left transition relative flex flex-col justify-between ${
+                  isSelected
+                    ? 'border-[#d4a853] bg-[#1c1914] shadow-[0_2px_12px_rgba(212,168,83,0.08)]'
+                    : 'border-[#2a2621] bg-[#14120f] hover:border-[#3e382f]'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-serif text-base font-normal text-[#f4efe6]">
+                      {prov.label}
+                    </span>
+                    {healthStat?.is_healthy ? (
+                      <span className="w-2 h-2 rounded-full bg-[#5a9e6f]" title="Operational" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-[#d4a853]" title="Fallback Mode" />
+                    )}
+                  </div>
+                  <p className="font-sans text-[11px] text-[#8c8273] leading-relaxed">
+                    {prov.desc}
+                  </p>
+                </div>
+                <div className="mt-3 pt-2 border-t border-[#2a2621]/80 font-mono text-[10px] text-[#5a5247] truncate">
+                  <span className="text-[#8c8273]">Model:</span> {prov.defaultModel}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Configuration Form Card */}
-      <Card className="border-slate-800 bg-[#0c101c]">
-        <CardHeader className="pb-3 border-b border-slate-800/80">
-          <CardTitle className="text-base text-white flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-sky-400" />
-            <span>Active Provider Parameters — {activeProvider.toUpperCase()}</span>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Fine-tune temperature, context limits, and model identifiers
+      {/* Parameter Configuration Card */}
+      <Card className="border-[#2a2621] bg-[#14120f]">
+        <CardHeader className="pb-3 border-b border-[#2a2621]">
+          <div className="flex items-center justify-between">
+            <CardTitle className="font-serif text-lg font-normal text-[#f4efe6] flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-[#d4a853]" />
+              <span>Inference Hyperparameters — {activeProvider.toUpperCase()}</span>
+            </CardTitle>
+            <Badge variant="amber" className="font-mono text-[10px]">
+              ENGINE ACTIVE
+            </Badge>
+          </div>
+          <CardDescription className="font-sans text-xs text-[#8c8273]">
+            Fine-tune temperature bounds, maximum output tokens, and context window targets
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="p-6 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="text-xs text-slate-300 font-medium block mb-1">Target Model Name</label>
+              <label className="font-sans text-xs text-[#c9bfaf] font-medium block mb-1.5">
+                Target Model Identifier
+              </label>
               <Input
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-xs font-mono"
+                className="font-mono text-xs"
               />
-              <span className="text-[10px] text-slate-500 mt-1 block">
-                Catalog default: {catalog?.default_model || 'gpt-4o-mini'}
+              <span className="font-sans text-[11px] text-[#5a5247] mt-1.5 block">
+                Catalog reference: <code className="font-mono text-[#8c8273]">{catalog?.default_model || 'gpt-4o-mini'}</code>
               </span>
             </div>
 
             <div>
-              <label className="text-xs text-slate-300 font-medium block mb-1">
-                Temperature ({temperature})
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-sans text-xs text-[#c9bfaf] font-medium">
+                  Sampling Temperature
+                </label>
+                <span className="font-mono text-xs text-[#d4a853] font-bold">
+                  {temperature.toFixed(2)}
+                </span>
+              </div>
               <input
                 type="range"
                 min="0.0"
@@ -230,27 +280,30 @@ export const AIModelConfig: React.FC = () => {
                 step="0.05"
                 value={temperature}
                 onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="w-full accent-sky-500 mt-2"
+                className="w-full h-1.5 bg-[#1c1914] rounded-lg appearance-none cursor-pointer accent-[#d4a853] mt-2 border border-[#2a2621]"
               />
-              <span className="text-[10px] text-slate-500 mt-1 block">
-                0.0 = Deterministic strict code review; 1.0 = Highly creative
-              </span>
+              <div className="flex items-center justify-between font-mono text-[10px] text-[#5a5247] mt-1.5">
+                <span>0.0 (Strict AST Code Review)</span>
+                <span>1.0 (Creative Exploratory)</span>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-slate-300 font-medium block mb-1">
-              Max Context Window & Token Bounds
-            </label>
-            <Input
-              type="number"
-              value={maxTokens}
-              onChange={(e) => setMaxTokens(parseInt(e.target.value) || 4096)}
-              className="bg-slate-950 border-slate-800 text-xs font-mono max-w-sm"
-            />
-            <span className="text-[10px] text-slate-500 mt-1 block">
-              Max context limit: {catalog?.max_context_length?.toLocaleString() || '128,000'} tokens
-            </span>
+          <div className="pt-2 border-t border-[#2a2621]">
+            <div className="max-w-md">
+              <label className="font-sans text-xs text-[#c9bfaf] font-medium block mb-1.5">
+                Max Token Limit per Deliberation Turn
+              </label>
+              <Input
+                type="number"
+                value={maxTokens}
+                onChange={(e) => setMaxTokens(parseInt(e.target.value) || 4096)}
+                className="font-mono text-xs"
+              />
+              <span className="font-sans text-[11px] text-[#5a5247] mt-1.5 block">
+                Context envelope limit: <code className="font-mono text-[#8c8273]">{catalog?.max_context_length?.toLocaleString() || '128,000'} tokens</code>
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

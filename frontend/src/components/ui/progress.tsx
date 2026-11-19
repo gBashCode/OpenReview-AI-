@@ -19,13 +19,13 @@ export const Progress: React.FC<ProgressProps> = ({
   return (
     <div
       className={cn(
-        "relative h-2 w-full overflow-hidden rounded-full bg-slate-800/80",
+        "relative h-1.5 w-full overflow-hidden rounded-[1px] bg-[#221f1a]",
         className
       )}
     >
       <div
         className={cn(
-          "h-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-300",
+          "h-full bg-gradient-to-r from-[#d4a853] via-[#e29b38] to-[#c7882c] transition-all duration-300",
           indicatorClassName
         )}
         style={{ width: `${percentage}%` }}

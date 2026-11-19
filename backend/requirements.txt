@@ -4,7 +4,8 @@ uvicorn[standard]>=0.30.0
 python-multipart>=0.0.9
 
 # Data validation & Configuration
-pydantic>=2.7.0
+pydantic[email]>=2.7.0
+email-validator>=2.0.0
 pydantic-settings>=2.3.0
 
 # Database & Migrations

@@ -38,17 +38,17 @@ export const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({
   };
 
   return (
-    <div className="rounded-xl border border-slate-800/90 bg-[#0c101c] overflow-hidden shadow-2xl flex flex-col">
+    <div className="rounded-[2px] border border-[#26221c] bg-[#12100d] overflow-hidden shadow-2xl flex flex-col">
       {/* Editor Header Bar */}
-      <div className="bg-[#0f1422] border-b border-slate-800/80 px-4 py-2 flex items-center justify-between text-xs font-mono text-slate-400">
+      <div className="bg-[#171511] border-b border-[#24201a] px-4 py-2 flex items-center justify-between text-xs font-mono text-[#8a8378]">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+            <span className="w-2 h-2 rounded-full bg-[#c75a4a]" />
+            <span className="w-2 h-2 rounded-full bg-[#e29b38]" />
+            <span className="w-2 h-2 rounded-full bg-[#5a9e6f]" />
           </div>
           {fileName && (
-            <span className="text-slate-300 font-semibold tracking-tight ml-1 text-xs">
+            <span className="text-[#f5f0e6] font-medium tracking-tight ml-1 text-xs">
               {fileName}
             </span>
           )}
@@ -56,12 +56,12 @@ export const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({
 
         <div className="flex items-center gap-3">
           {isDiffMode && originalCode && (
-            <div className="flex items-center rounded-md bg-slate-900 border border-slate-800 p-0.5 text-[11px]">
+            <div className="flex items-center rounded-[2px] bg-[#12100d] border border-[#26221c] p-0.5 text-[11px]">
               <button
                 type="button"
                 onClick={() => setSplitView(true)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded transition ${
-                  splitView ? 'bg-sky-500/20 text-sky-400 font-semibold' : 'text-slate-400 hover:text-white'
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-[2px] transition ${
+                  splitView ? 'bg-[#221f1a] text-[#d4a853] font-medium border border-[#38332a]' : 'text-[#8a8378] hover:text-[#d8d2c4]'
                 }`}
               >
                 <Split className="w-3 h-3" />
@@ -70,8 +70,8 @@ export const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({
               <button
                 type="button"
                 onClick={() => setSplitView(false)}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded transition ${
-                  !splitView ? 'bg-sky-500/20 text-sky-400 font-semibold' : 'text-slate-400 hover:text-white'
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-[2px] transition ${
+                  !splitView ? 'bg-[#221f1a] text-[#d4a853] font-medium border border-[#38332a]' : 'text-[#8a8378] hover:text-[#d8d2c4]'
                 }`}
               >
                 <AlignJustify className="w-3 h-3" />
@@ -80,17 +80,17 @@ export const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({
             </div>
           )}
 
-          <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-500">
+          <span className="text-[10px] uppercase font-mono tracking-wider text-[#6a6358]">
             {language}
           </span>
 
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white transition px-2 py-1 rounded hover:bg-slate-800"
+            className="flex items-center gap-1 text-[11px] font-mono text-[#8a8378] hover:text-[#f5f0e6] transition px-2 py-0.5 rounded-[2px] hover:bg-[#201d18]"
             title="Copy code to clipboard"
           >
-            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+            {copied ? <Check className="w-3 h-3 text-[#5a9e6f]" /> : <Copy className="w-3 h-3" />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>
@@ -110,9 +110,9 @@ export const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({
               renderSideBySide: splitView,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
-              fontSize: 12.5,
+              fontSize: 12,
               automaticLayout: true,
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
               lineNumbers: 'on',
               renderIndicators: true,
             }}
@@ -128,11 +128,11 @@ export const MonacoDiffViewer: React.FC<MonacoDiffViewerProps> = ({
               readOnly,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
-              fontSize: 12.5,
+              fontSize: 12,
               lineNumbers: 'on',
               renderLineHighlight: highlightLine ? 'all' : 'line',
               automaticLayout: true,
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'IBM Plex Mono', ui-monospace, monospace",
             }}
           />
         )}
