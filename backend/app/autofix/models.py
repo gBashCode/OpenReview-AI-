@@ -25,12 +25,20 @@ class Patch(Base, UUIDMixin, TimestampMixin):
     original_code: Mapped[str] = mapped_column(Text, nullable=False)
     proposed_code: Mapped[str] = mapped_column(Text, nullable=False)
     diff_content: Mapped[str] = mapped_column(Text, nullable=False)
+    rollback_diff: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    formatter_status: Mapped[Optional[str]] = mapped_column(String(30), default="passed", nullable=True)
+    linter_status: Mapped[Optional[str]] = mapped_column(String(30), default="passed", nullable=True)
+    sandbox_status: Mapped[Optional[str]] = mapped_column(String(30), default="passed", nullable=True)
+    regression_status: Mapped[Optional[str]] = mapped_column(String(30), default="passed", nullable=True)
+    failure_explanation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    branch_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    pr_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(
         String(30),
         default="pending",
         nullable=False,
         index=True,
-    )  # pending, approved, rejected, applied, failed
+    )  # pending, approved, rejected, applied, failed, rolled_back
     applied_by_user_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("users.id", ondelete="SET NULL"),

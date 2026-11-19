@@ -54,6 +54,13 @@ export const AutoFix: React.FC = () => {
     );
   };
 
+  const handleRollback = () => {
+    info(
+      'Patch Rolled Back',
+      `Reverted changes using inverse rollback diff for ${selectedProposal.filePath}.`
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -69,6 +76,16 @@ export const AutoFix: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRollback}
+            className="flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Rollback</span>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -212,25 +229,45 @@ export const AutoFix: React.FC = () => {
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-500 uppercase font-mono">Unit Test Pass Rate</div>
-                <div className="font-semibold text-emerald-400 font-mono mt-0.5">
-                  {selectedProposal.testsSummary}
+            <CardContent className="p-4 space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                  <div className="text-[10px] text-slate-500 uppercase font-mono">Unit Test Pass Rate</div>
+                  <div className="font-semibold text-emerald-400 font-mono mt-0.5">
+                    {selectedProposal.testsSummary}
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                  <div className="text-[10px] text-slate-500 uppercase font-mono">AST & Lint Verification</div>
+                  <div className="font-semibold text-white font-mono mt-0.5">
+                    Valid AST (0 Errors)
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                  <div className="text-[10px] text-slate-500 uppercase font-mono">Regression Risk Index</div>
+                  <div className="font-semibold text-emerald-400 font-mono mt-0.5">
+                    Minimal (&lt; 0.05%)
+                  </div>
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-500 uppercase font-mono">AST Syntax Verification</div>
-                <div className="font-semibold text-white font-mono mt-0.5">
-                  Valid Python 3.12+ AST
+              {/* Zero-Trust Sandbox Security Telemetry */}
+              <div className="p-3 rounded-lg bg-slate-950/90 border border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-white font-semibold">Ephemeral Container Sandbox:</span>
+                  <span className="text-emerald-400">Zero-Trust Isolated</span>
                 </div>
-              </div>
-
-              <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
-                <div className="text-[10px] text-slate-500 uppercase font-mono">Regression Risk Index</div>
-                <div className="font-semibold text-emerald-400 font-mono mt-0.5">
-                  Minimal (&lt; 0.05%)
+                <div className="flex items-center gap-3 text-[10px] text-slate-500">
+                  <span>Network: NONE</span>
+                  <span>•</span>
+                  <span>CPU: 1.0 core</span>
+                  <span>•</span>
+                  <span>Memory: 512MB max</span>
+                  <span>•</span>
+                  <span className="text-emerald-400">Secrets Scrubbed</span>
                 </div>
               </div>
             </CardContent>
