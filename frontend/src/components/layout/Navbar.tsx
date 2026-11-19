@@ -22,7 +22,7 @@ import { OpenReviewLogo } from './OpenReviewLogo';
 export const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { info, success } = useToast();
-  const { user, logout, isDemoMode, loginWithDemo } = useAuth();
+  const { user, logout, isDemoMode } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
@@ -189,9 +189,9 @@ export const Navbar: React.FC = () => {
           </a>
         </div>
 
-        {/* Item 6: Demo Mode Button (gold outline and gold text, gold fill with dark text #17120a on hover) */}
-        <div className="header-item-animate whitespace-nowrap shrink-0" style={{ animationDelay: '0.36s' }}>
-          {isDemoMode ? (
+        {/* Demo Mode Indicator (when active) */}
+        {isDemoMode && (
+          <div className="header-item-animate whitespace-nowrap shrink-0" style={{ animationDelay: '0.36s' }}>
             <div
               className="header-pill hidden sm:flex items-center gap-2 h-[40px] px-3.5 rounded-full border border-[#e0b04a] bg-[rgba(224,176,74,0.14)] text-[#e0b04a] text-[13px] font-semibold shadow-sm whitespace-nowrap shrink-0"
               title="Active Sandbox Demo Session with Read-Only Capabilities"
@@ -199,25 +199,8 @@ export const Navbar: React.FC = () => {
               <Sparkles className="w-3.5 h-3.5 text-[#e0b04a] animate-pulse shrink-0" />
               <span>Demo Mode</span>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await loginWithDemo();
-                  success('Demo Session Active', 'Switched to isolated sandbox demo mode.');
-                } catch (e: any) {
-                  info('Demo Session', e.message || 'Demo session active.');
-                }
-              }}
-              className="header-pill hidden sm:flex items-center gap-2 h-[40px] px-3.5 rounded-full border border-[#e0b04a] bg-transparent text-[#e0b04a] hover:bg-[#e0b04a] hover:text-[#17120a] text-[13px] font-semibold shadow-sm transition duration-200 cursor-pointer group active:scale-[0.97] whitespace-nowrap shrink-0 focus-gold"
-              title="1-Click Sandbox Demo Access"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#e0b04a] group-hover:text-[#17120a] group-hover:scale-110 transition-transform shrink-0" />
-              <span>1-Click Demo Access</span>
-            </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Item 7: Notification Bell (background rgba(255,255,255,.04), inset 1px #2c261c, gold notification dot) */}
         <div className="header-item-animate relative shrink-0" style={{ animationDelay: '0.42s' }}>

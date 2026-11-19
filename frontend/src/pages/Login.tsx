@@ -48,20 +48,6 @@ export const Login: React.FC = () => {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setIsLoading(true);
-    setLoginProvider('demo');
-    try {
-      await loginWithDemo();
-      success('Sandbox Session Initialized', 'Authenticated in Demo Mode as Lead Architect.');
-      navigate('/dashboard');
-    } catch (err: any) {
-      error('Demo Access Failed', err.message || 'Could not initialize sandbox demo session.');
-    } finally {
-      setIsLoading(false);
-      setLoginProvider(null);
-    }
-  };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +74,7 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-transparent flex flex-col justify-center items-center p-6 selection:bg-[#d4a853]/25 selection:text-[#f5f0e6] relative">
-      {/* Top Header Bar with Independent 1-Click Demo Access at Top-Right (Preserved) */}
+      {/* Top Header Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between p-4 sm:p-6 pointer-events-none">
         <Link
           to="/landing"
@@ -96,18 +82,6 @@ export const Login: React.FC = () => {
         >
           <span>← Back to Overview</span>
         </Link>
-
-        {/* 1-Click Demo Access Button at Top-Right */}
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          disabled={isLoading}
-          className="pointer-events-auto flex items-center gap-2 px-3.5 py-1.5 rounded-[2px] border border-[#d4a853]/50 bg-[#16130f]/90 text-[#d4a853] hover:bg-[#252018] hover:border-[#d4a853] text-xs font-mono font-medium shadow-lg shadow-black/60 hover:shadow-[#d4a853]/15 transition-all duration-200 cursor-pointer group"
-          title="Instant 1-Click Sandbox Demo Access"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-[#d4a853] group-hover:scale-110 group-hover:rotate-6 transition-transform" />
-          <span>1-Click Demo Access</span>
-        </button>
       </header>
 
       <div className="w-full max-w-[420px] space-y-6 mt-8 sm:mt-0">
