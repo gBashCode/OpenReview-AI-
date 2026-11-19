@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     username: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    github_id: Optional[int] = None
     is_active: bool = True
     is_superuser: bool = False
 
@@ -23,6 +24,7 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    github_id: Optional[int] = None
     password: Optional[str] = Field(None, min_length=8)
     is_active: Optional[bool] = None
 

@@ -32,3 +32,14 @@ class RegisterRequest(BaseModel):
     full_name: Optional[str] = None
     password: str = Field(..., min_length=8)
     organization_name: Optional[str] = None  # If provided, creates default org for user
+
+
+class GitHubOAuthURLResponse(BaseModel):
+    """GitHub OAuth authorize URL response."""
+    url: str
+
+
+class GitHubOAuthCallbackRequest(BaseModel):
+    """Payload to exchange GitHub authorization code."""
+    code: str
+    redirect_uri: Optional[str] = None

@@ -90,3 +90,15 @@ async def test_auth_me_authorized(async_client: AsyncClient, auth_headers: dict)
     assert res.status_code == 200
     data = res.json()
     assert data["email"] == "developer@openreview.ai"
+
+
+@pytest.mark.asyncio
+async def test_github_oauth_url(async_client: AsyncClient):
+    res = await async_client.get("/api/v1/auth/github/url?redirect_uri=http://localhost:5173/auth/callback")
+    assert res.status_code == 200
+    data = res.json()
+    assert "url" in data
+    assert "github.com/login/oauth/authorize" in data["url"]
+    assert "scope=read:user,user:email" in data["url"]
+    assert "redirect_uri=http://localhost:5173/auth/callback" in data["url"]
+

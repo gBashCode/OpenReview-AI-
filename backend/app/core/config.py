@@ -118,6 +118,8 @@ class Settings(BaseSettings):
             return key
         if self.GITHUB_APP_PRIVATE_KEY_PATH:
             p = Path(self.GITHUB_APP_PRIVATE_KEY_PATH)
+            if not p.is_absolute():
+                p = BASE_DIR / p
             if p.is_file():
                 return p.read_text(encoding="utf-8")
         return None

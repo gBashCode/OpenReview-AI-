@@ -8,7 +8,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGitHub: () => Promise<void>;
   loginWithDemo: () => Promise<void>;
+  handleOAuthCallback: (tokenOrCode: { token?: string; code?: string }) => Promise<User>;
   logout: () => void;
 }
 
@@ -41,6 +43,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
     setUser(res.user);
+  };
+
+  const loginWithGitHub = async () => {
+    // Calling without redirect_uri allows GitHub to use the Callback URL configured on the GitHub App
+    const res = await authApi.getGitHubOAuthUrl();
+    if (res?.url) {
+      window.location.href = res.url;
+    }
+  };
+
+  const handleOAuthCallback = async ({ token, code }: { token?: string; code?: string }): Promise<User> => {
+    if (token) {
+      setAuthToken(token);
+      const currentUser = await authApi.getMe();
+      setUser(currentUser);
+      return currentUser;
+    } else if (code) {
+      const res = await authApi.exchangeGitHubCode(code);
+      setUser(res.user);
+      return res.user;
+    }
+    throw new Error('No authorization token or code provided');
   };
 
   const loginWithDemo = async () => {
@@ -84,7 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGitHub,
         loginWithDemo,
+        handleOAuthCallback,
         logout,
       }}
     >

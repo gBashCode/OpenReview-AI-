@@ -1,9 +1,16 @@
 """Authentication API Endpoints."""
 
-from typing import Any, Dict
-from fastapi import APIRouter, Depends, status
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.auth.schemas import LoginRequest, RegisterRequest, Token
+from app.auth.schemas import (
+    GitHubOAuthCallbackRequest,
+    GitHubOAuthURLResponse,
+    LoginRequest,
+    RegisterRequest,
+    Token,
+)
 from app.auth.service import AuthService
 from app.core.dependencies import get_current_user
 from app.database.session import get_db
@@ -50,6 +57,55 @@ async def login(
 
 
 @router.get(
+    "/github/url",
+    response_model=GitHubOAuthURLResponse,
+    summary="Get GitHub OAuth authorize URL",
+)
+async def get_github_oauth_url(
+    redirect_uri: Optional[str] = Query(None, description="Frontend callback URL"),
+    state: Optional[str] = Query(None, description="CSRF state"),
+) -> GitHubOAuthURLResponse:
+    """Returns the URL to redirect the user to GitHub for OAuth authorization."""
+    url = AuthService.get_github_oauth_url(redirect_uri=redirect_uri, state=state)
+    return GitHubOAuthURLResponse(url=url)
+
+
+@router.post(
+    "/github/callback",
+    status_code=status.HTTP_200_OK,
+    summary="Exchange GitHub OAuth code for JWT session",
+)
+async def github_oauth_callback(
+    payload: GitHubOAuthCallbackRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> Dict[str, Any]:
+    """Exchanges an authorization code from GitHub for an active user session and JWT."""
+    user, token = await service.authenticate_github_code(
+        code=payload.code,
+        redirect_uri=payload.redirect_uri,
+    )
+    return {
+        "user": UserRead.model_validate(user),
+        "token": token,
+    }
+
+
+@router.get(
+    "/github/callback",
+    summary="Browser redirect handler for GitHub OAuth",
+)
+async def github_oauth_redirect(
+    code: str = Query(..., description="Authorization code from GitHub"),
+    state: Optional[str] = Query(None),
+    service: AuthService = Depends(get_auth_service),
+) -> RedirectResponse:
+    """Handles direct browser callback from GitHub and redirects to frontend with token."""
+    user, token = await service.authenticate_github_code(code=code)
+    frontend_url = f"http://localhost:5173/auth/callback?token={token.access_token}"
+    return RedirectResponse(url=frontend_url)
+
+
+@router.get(
     "/me",
     response_model=UserRead,
     summary="Get authenticated user profile",
@@ -58,3 +114,4 @@ async def get_me(
     current_user: User = Depends(get_current_user),
 ) -> UserRead:
     return UserRead.model_validate(current_user)
+

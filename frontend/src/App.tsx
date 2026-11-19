@@ -8,6 +8,7 @@ import { AppLayout } from './components/layout/AppLayout';
 // 16 Full Application Pages
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
+import { AuthCallback } from './pages/AuthCallback';
 import { Dashboard } from './pages/Dashboard';
 import { Repositories } from './pages/Repositories';
 import { RepositoryDetail } from './pages/RepositoryDetail';
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
             {/* Public Marketing & Auth Pages */}
             <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Authenticated Dashboard Application Shell */}
             <Route element={<AppLayout />}>

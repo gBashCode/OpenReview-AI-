@@ -36,6 +36,22 @@ export const authApi = {
 
   getMe: (): Promise<User> => apiRequest<User>('/auth/me'),
 
+  getGitHubOAuthUrl: async (redirectUri?: string): Promise<{ url: string }> => {
+    const params = redirectUri ? `?redirect_uri=${encodeURIComponent(redirectUri)}` : '';
+    return apiRequest<{ url: string }>(`/auth/github/url${params}`);
+  },
+
+  exchangeGitHubCode: async (code: string, redirectUri?: string): Promise<AuthResponse> => {
+    const res = await apiRequest<AuthResponse>('/auth/github/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
+    });
+    if (res?.token?.access_token) {
+      setAuthToken(res.token.access_token);
+    }
+    return res;
+  },
+
   logout: (): void => {
     setAuthToken(null);
   },

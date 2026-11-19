@@ -18,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { success, error, info } = useToast();
-  const { login, loginWithDemo } = useAuth();
+  const { login, loginWithGitHub, loginWithDemo } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,12 +26,9 @@ export const Login: React.FC = () => {
   const handleGitHubLogin = async () => {
     setIsLoading(true);
     try {
-      await loginWithDemo();
-      success('Authenticated via GitHub', 'Session established in OpenReview AI.');
-      navigate('/dashboard');
+      await loginWithGitHub();
     } catch (err: any) {
-      error('Authentication Error', err.message || 'Failed to authenticate');
-    } finally {
+      error('GitHub Authentication Failed', err.message || 'Could not initiate GitHub OAuth.');
       setIsLoading(false);
     }
   };
