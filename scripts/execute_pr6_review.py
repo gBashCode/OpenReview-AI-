@@ -36,9 +36,7 @@ login_res = client.post(f"{API_BASE}/auth/login", json={
     "email": "architect@openreview.ai",
     "password": "OpenReview2026!"
 })
-print(f"Login response: {login_res.status_code}")
 if login_res.status_code != 200:
-    print(f"Login error: {login_res.text}")
     reg_res = client.post(f"{API_BASE}/auth/register", json={
         "email": "architect@openreview.ai",
         "username": "architect",
@@ -46,11 +44,7 @@ if login_res.status_code != 200:
         "full_name": "Lead Architect",
         "organization_name": "OpenReview Core"
     })
-    print(f"Register response: {reg_res.status_code} {reg_res.text}")
-    if reg_res.status_code in (200, 201):
-        token = reg_res.json()["token"]["access_token"]
-    else:
-        raise RuntimeError(f"Registration failed: {reg_res.text}")
+    token = reg_res.json()["token"]["access_token"]
 else:
     token = login_res.json()["token"]["access_token"]
 
@@ -381,3 +375,4 @@ print(f" Agent Conference:   http://127.0.0.1:5173/agents")
 print(f" AutoFix Screen:     http://127.0.0.1:5173/autofix")
 print(f" GitHub PR URL:      https://github.com/gBashCode/OpenReview-AI-/pull/{PR_NUMBER}")
 print("=" * 80)
+
