@@ -33,7 +33,7 @@ class GeminiProvider(BaseLLMProvider):
     """Adapter for Google Gemini models (Gemini 2.5 Flash, Gemini 2.5 Pro, Gemini 1.5 Pro)."""
 
     provider_name: str = "gemini"
-    default_model: str = "gemini-2.5-flash"
+    default_model: str = "gemini-3-flash-preview"
 
     def __init__(self, api_key: Optional[str] = None, http_client: Optional[httpx.AsyncClient] = None):
         self.api_key = api_key or settings.GOOGLE_API_KEY

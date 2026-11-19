@@ -143,7 +143,7 @@ class Settings(BaseSettings):
     LLM_RETRY_COUNT: int = 3
     LLM_TOKEN_BUDGET: int = 200000
     LLM_FALLBACK_PROVIDER: Optional[str] = "gemini"
-    LLM_FALLBACK_MODEL: Optional[str] = "gemini-2.5-flash"
+    LLM_FALLBACK_MODEL: Optional[str] = "gemini-3-flash-preview"
 
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
