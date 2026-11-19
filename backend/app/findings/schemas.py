@@ -18,6 +18,14 @@ class FindingBase(BaseModel):
     suggested_patch: Optional[str] = None
     agent_name: Optional[str] = None
     confidence_score: Optional[float] = None
+    discussion_state: Optional[str] = "Accepted"
+    evidence: Optional[str] = None
+    verification_status: Optional[str] = "Confirmed"
+    root_cause: Optional[str] = None
+    impact: Optional[str] = None
+    actionability_score: Optional[float] = None
+    is_publishable: bool = True
+    rejection_reason: Optional[str] = None
     is_resolved: bool = False
     github_comment_id: Optional[str] = None
 

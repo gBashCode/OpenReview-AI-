@@ -148,6 +148,7 @@ class ReviewOrchestrationService:
                 continue  # Skip rejected false positives from database findings table
 
             f_prop = vf.finding
+            v_status = "Confirmed" if canonical_status == "Accepted" else canonical_status
             finding_record = Finding(
                 review_id=review.id,
                 file_path=f_prop.file_path,
@@ -162,6 +163,11 @@ class ReviewOrchestrationService:
                 agent_name=f_prop.agent_name,
                 confidence_score=vf.confidence_score,
                 discussion_state=canonical_status,
+                verification_status=v_status,
+                root_cause=getattr(vf, "verification_reason", f"Identified issue in {f_prop.file_path}"),
+                impact=f"Potential {f_prop.severity} risk affecting {f_prop.category} reliability.",
+                actionability_score=0.9 if f_prop.suggested_patch else 0.75,
+                is_publishable=True,
                 evidence=f_prop.code_evidence,
                 is_resolved=False,
             )

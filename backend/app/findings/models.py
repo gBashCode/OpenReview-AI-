@@ -48,6 +48,17 @@ class Finding(Base, UUIDMixin, TimestampMixin):
         index=True,
     )  # Accepted, Rejected, Needs investigation, Duplicate, Uncertain
     evidence: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    verification_status: Mapped[str] = mapped_column(
+        String(50),
+        default="Confirmed",
+        nullable=False,
+        index=True,
+    )  # Confirmed, High-confidence potential issue, Needs investigation, Rejected
+    root_cause: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    impact: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    actionability_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_publishable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     github_comment_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
