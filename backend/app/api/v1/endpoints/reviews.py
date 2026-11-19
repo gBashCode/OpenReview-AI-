@@ -13,6 +13,12 @@ from app.database.session import get_db
 from app.findings.models import Finding
 from app.findings.schemas import FindingCreate, FindingRead
 from app.findings.service import FindingService
+from app.github.publishing_engine import (
+    GitHubDiffLineValidator,
+    GitHubReviewFormatter,
+    GitHubReviewPublishingEngine,
+)
+from app.github.schemas import GitHubPublishRequest, GitHubPublishResult
 from app.orchestration.registry import get_agent_registry
 from app.orchestration.service import ReviewOrchestrationService
 from app.reviews.models import Review
@@ -386,5 +392,87 @@ async def deliberate_conference(
     orchestration_svc = ReviewOrchestrationService(session)
     await orchestration_svc.execute_review(review_id, custom_diff=custom_diff)
     return await orchestration_svc.get_conference_session(review_id)
+
+
+@router.post(
+    "/{review_id}/publish",
+    response_model=GitHubPublishResult,
+    summary="Publish verified findings, review summary, and check runs to GitHub PR",
+)
+async def publish_review_to_github(
+    review_id: str,
+    payload: Optional[GitHubPublishRequest] = None,
+    session: AsyncSession = Depends(get_db),
+) -> GitHubPublishResult:
+    """Executes the GitHub Review Publishing Engine to post verified comments,
+
+    Check Runs, and executive scorecard directly to the target GitHub Pull Request.
+    """
+    engine = GitHubReviewPublishingEngine(session=session)
+    req = payload or GitHubPublishRequest(review_id=review_id)
+    req.review_id = review_id
+    result = await engine.publish_review(req)
+    return result
+
+
+@router.get(
+    "/{review_id}/publish-preview",
+    summary="Generate preview of review summary and inline comments before publishing",
+)
+async def preview_review_publishing(
+    review_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Generates preview markdown and mapped inline comments without invoking GitHub API."""
+    stmt = (
+        select(Review)
+        .options(
+            selectinload(Review.pull_request),
+            selectinload(Review.findings),
+            selectinload(Review.agents),
+        )
+        .where(Review.id == review_id)
+    )
+    review = (await session.execute(stmt)).scalar_one_or_none()
+    if not review:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError("Review", review_id)
+
+    actionable = [f for f in review.findings if GitHubReviewPublishingEngine.is_actionable(f)]
+    agent_names = [a.agent_name for a in review.agents]
+    commit_sha = review.commit_sha or (review.pull_request.head_sha if review.pull_request else "0000000")
+
+    diff_validator = GitHubDiffLineValidator("")
+    inline_candidates, summary_candidates = diff_validator.partition_findings(actionable)
+
+    summary_md = GitHubReviewFormatter.format_review_summary(
+        review=review,
+        inline_findings=inline_candidates,
+        summary_findings=summary_candidates,
+        agent_names=agent_names,
+        commit_sha=commit_sha,
+    )
+
+    formatted_inline = [
+        {
+            "finding_id": f.id,
+            "file_path": f.file_path,
+            "line_number": f.line_number,
+            "title": f.title,
+            "severity": f.severity,
+            "body": GitHubReviewFormatter.format_inline_comment(f),
+        }
+        for f in actionable
+    ]
+
+    return {
+        "review_id": review.id,
+        "commit_sha": commit_sha,
+        "total_findings": len(review.findings),
+        "actionable_findings": len(actionable),
+        "summary_markdown": summary_md,
+        "inline_comments": formatted_inline,
+    }
+
 
 

@@ -97,6 +97,7 @@ class Settings(BaseSettings):
     GITHUB_WEBHOOK_SECRET: Optional[str] = None
     GITHUB_CLIENT_ID: Optional[str] = None
     GITHUB_CLIENT_SECRET: Optional[str] = None
+    GITHUB_TOKEN: Optional[str] = None
 
     def get_github_private_key(self) -> Optional[str]:
         """Resolves GitHub App private key from environment variable or file path."""

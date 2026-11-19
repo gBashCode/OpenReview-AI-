@@ -16,8 +16,11 @@ from app.github.github_pull_request_service import GitHubPullRequestService
 from app.github.github_repository_service import GitHubRepositoryService
 from app.github.github_webhook_service import GitHubWebhookService
 from app.github.models import GitHubInstallation
+from app.github.publishing_engine import GitHubReviewPublishingEngine
 from app.github.schemas import (
     GitHubInstallationRead,
+    GitHubPublishRequest,
+    GitHubPublishResult,
     GitHubRepositoryItem,
 )
 from app.organizations.models import Organization, OrganizationMember
@@ -220,3 +223,18 @@ async def sync_repositories(
         installation_db_id=inst.id if inst else None,
     )
     return [RepositoryRead.model_validate(r) for r in synced]
+
+
+@router.post(
+    "/publish",
+    response_model=GitHubPublishResult,
+    summary="Publish verified findings, review summary, and check runs to target GitHub PR",
+)
+async def publish_github_review(
+    payload: GitHubPublishRequest,
+    session: AsyncSession = Depends(get_db),
+) -> GitHubPublishResult:
+    """Executes the GitHub Review Publishing Engine directly."""
+    engine = GitHubReviewPublishingEngine(session=session)
+    return await engine.publish_review(payload)
+

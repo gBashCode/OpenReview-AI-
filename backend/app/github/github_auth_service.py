@@ -106,11 +106,23 @@ class GitHubAuthService:
             if close_client:
                 await client.aclose()
 
-    async def get_authenticated_client(self, installation_id: int) -> httpx.AsyncClient:
-        """Returns an AsyncClient pre-configured with installation bearer token headers."""
-        token = await self.get_installation_access_token(installation_id)
+    async def get_authenticated_client(
+        self,
+        installation_id: Optional[int] = None,
+        token: Optional[str] = None,
+    ) -> httpx.AsyncClient:
+        """Returns an AsyncClient pre-configured with installation or direct bearer token headers."""
+        resolved_token = token or settings.GITHUB_TOKEN
+        if not resolved_token and installation_id is not None:
+            resolved_token = await self.get_installation_access_token(installation_id)
+
+        if not resolved_token:
+            raise AuthenticationError(
+                "Neither a valid GitHub installation_id nor direct token/GITHUB_TOKEN was provided."
+            )
+
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {resolved_token}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": GITHUB_API_VERSION,
             "User-Agent": "OpenReviewAI-App/1.0",

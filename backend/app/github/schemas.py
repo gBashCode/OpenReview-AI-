@@ -94,3 +94,48 @@ class GitHubCheckRunCreate(BaseModel):
     status: Literal["queued", "in_progress", "completed"] = "queued"
     conclusion: Optional[Literal["action_required", "cancelled", "failure", "neutral", "success", "skipped", "timed_out"]] = None
     output: Optional[GitHubCheckRunOutput] = None
+
+
+class GitHubPublishRequest(BaseModel):
+    """Request to publish a verified code review to GitHub PR."""
+    review_id: str = Field(description="Internal Review UUID")
+    owner: Optional[str] = Field(default=None, description="GitHub repository owner/org")
+    repo: Optional[str] = Field(default=None, description="GitHub repository name")
+    pull_number: Optional[int] = Field(default=None, description="GitHub PR number")
+    installation_id: Optional[int] = Field(default=None, description="GitHub App installation ID")
+    token: Optional[str] = Field(default=None, description="Optional GitHub Personal Access Token or OAuth token")
+    min_actionability: float = Field(default=0.6, ge=0.0, le=1.0, description="Minimum actionability score to publish")
+    force_comment_event: Optional[Literal["COMMENT", "APPROVE", "REQUEST_CHANGES"]] = Field(
+        default=None,
+        description="Override automatic review event status"
+    )
+    manage_outdated: bool = Field(default=True, description="Whether to resolve or reply to outdated comments")
+
+
+class GitHubPublishResult(BaseModel):
+    """Confirmed result of review publishing to GitHub API."""
+    status: Literal["published", "partial", "failed"] = Field(description="Overall publish status")
+    review_id: str = Field(description="Internal Review UUID")
+    github_review_id: Optional[int] = Field(default=None, description="GitHub PR Review ID")
+    github_review_url: Optional[str] = Field(default=None, description="HTML URL of GitHub Review")
+    check_run_id: Optional[int] = Field(default=None, description="GitHub Check Run ID")
+    total_findings: int = 0
+    actionable_findings: int = 0
+    inline_comments_published: int = 0
+    summary_findings_count: int = 0
+    duplicate_comments_skipped: int = 0
+    outdated_comments_resolved: int = 0
+    comment_ids: List[int] = Field(default_factory=list, description="IDs of published inline comments")
+    published_at: datetime = Field(default_factory=lambda: datetime.now())
+    event: str = Field(default="COMMENT", description="Submitted GitHub Review event (APPROVE/REQUEST_CHANGES/COMMENT)")
+    api_confirmed: bool = Field(default=False, description="Whether GitHub confirmed success with HTTP 200/201")
+    message: str = Field(default="Publishing completed successfully.")
+
+
+class GitHubDiffLineRange(BaseModel):
+    """Valid line range on the right side of a diff hunk."""
+    start_line: int
+    end_line: int
+    added_lines: List[int] = Field(default_factory=list)
+    context_lines: List[int] = Field(default_factory=list)
+
