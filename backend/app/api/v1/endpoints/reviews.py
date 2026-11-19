@@ -33,6 +33,12 @@ class OrchestrateReviewRequest(BaseModel):
     custom_diff: Optional[str] = Field(default=None, description="Optional unified diff to review")
 
 
+class ConferenceDeliberateRequest(BaseModel):
+    max_rounds: int = Field(default=2, ge=1, le=5, description="Maximum discussion rounds (prevents infinite loops)")
+    custom_diff: Optional[str] = Field(default=None, description="Optional unified diff to deliberate on")
+    token_budget: Optional[int] = Field(default=100000, ge=1000, description="Token budget cap")
+
+
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
@@ -350,4 +356,35 @@ async def orchestrate_review(
     custom_diff = payload.custom_diff if payload else None
     await orchestration_svc.execute_review(review_id, custom_diff=custom_diff)
     return await get_review(review_id, review_service)
+
+
+@router.get(
+    "/{review_id}/conference",
+    summary="Get live multi-agent conference session, discussions, and evidence threads",
+)
+async def get_conference_session(
+    review_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Retrieves full conference transcript, finding threads, evidence citations, and scorecard metrics."""
+    orchestration_svc = ReviewOrchestrationService(session)
+    return await orchestration_svc.get_conference_session(review_id)
+
+
+@router.post(
+    "/{review_id}/conference/deliberate",
+    summary="Trigger multi-round agent cross-examination and consensus deliberation",
+)
+async def deliberate_conference(
+    review_id: str,
+    payload: Optional[ConferenceDeliberateRequest] = None,
+    session: AsyncSession = Depends(get_db),
+):
+    """Triggers iterative challenge, rebuttal, and verification rounds with bounded execution."""
+    max_rounds = payload.max_rounds if payload else 2
+    custom_diff = payload.custom_diff if payload else None
+    orchestration_svc = ReviewOrchestrationService(session)
+    await orchestration_svc.execute_review(review_id, custom_diff=custom_diff)
+    return await orchestration_svc.get_conference_session(review_id)
+
 

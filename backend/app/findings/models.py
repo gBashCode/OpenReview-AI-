@@ -41,6 +41,13 @@ class Finding(Base, UUIDMixin, TimestampMixin):
     suggested_patch: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     agent_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     confidence_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    discussion_state: Mapped[str] = mapped_column(
+        String(50),
+        default="Accepted",
+        nullable=False,
+        index=True,
+    )  # Accepted, Rejected, Needs investigation, Duplicate, Uncertain
+    evidence: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     github_comment_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 

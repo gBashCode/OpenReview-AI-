@@ -143,7 +143,8 @@ class ReviewOrchestrationService:
         # 5. Persist Verified Findings
         persisted_findings_map = {}
         for vf in final_state.get("verified_findings", []):
-            if vf.status == "rejected":
+            canonical_status = getattr(vf, "canonical_state", vf.status)
+            if canonical_status == "Rejected":
                 continue  # Skip rejected false positives from database findings table
 
             f_prop = vf.finding
@@ -160,6 +161,8 @@ class ReviewOrchestrationService:
                 suggested_patch=f_prop.suggested_patch,
                 agent_name=f_prop.agent_name,
                 confidence_score=vf.confidence_score,
+                discussion_state=canonical_status,
+                evidence=f_prop.code_evidence,
                 is_resolved=False,
             )
             self.session.add(finding_record)
@@ -176,6 +179,11 @@ class ReviewOrchestrationService:
                 message_type=disc.message_type,
                 content=disc.content,
                 file_context=disc.file_context,
+                evidence=disc.evidence,
+                source_reference=disc.source_reference,
+                position=disc.position,
+                final_decision=disc.final_decision,
+                round_number=disc.round_number,
                 is_verified=disc.is_verified,
             )
             self.session.add(disc_record)
@@ -194,3 +202,130 @@ class ReviewOrchestrationService:
         await self.session.refresh(review)
         logger.info(f"Review {review.id} successfully completed and persisted.")
         return review
+
+    async def get_conference_session(self, review_id: str) -> Dict[str, Any]:
+        """Loads and formats the multi-agent conference timeline, threads, and metrics."""
+        stmt = (
+            select(Review)
+            .options(
+                selectinload(Review.findings),
+                selectinload(Review.agents),
+                selectinload(Review.discussions),
+                selectinload(Review.pull_request),
+            )
+            .where(Review.id == review_id)
+        )
+        review = (await self.session.execute(stmt)).scalar_one_or_none()
+        if not review:
+            raise NotFoundError("Review", review_id)
+
+        # Group discussions by finding_id
+        discussions_by_finding: Dict[str, List[AgentDiscussion]] = {}
+        general_discussions: List[AgentDiscussion] = []
+
+        max_round = 1
+        for d in review.discussions:
+            if d.round_number and d.round_number > max_round:
+                max_round = d.round_number
+            if d.finding_id:
+                discussions_by_finding.setdefault(d.finding_id, []).append(d)
+            else:
+                general_discussions.append(d)
+
+        threads = []
+        for f in review.findings:
+            f_discs = discussions_by_finding.get(f.id, [])
+            threads.append({
+                "finding_id": f.id,
+                "file_path": f.file_path,
+                "line_number": f.line_number,
+                "title": f.title,
+                "category": f.category,
+                "severity": f.severity,
+                "proposing_agent": f.agent_name or "Specialist Agent",
+                "discussion_state": f.discussion_state or "Accepted",
+                "evidence": f.evidence,
+                "suggested_patch": f.suggested_patch,
+                "messages": [
+                    {
+                        "id": d.id,
+                        "review_id": d.review_id,
+                        "finding_id": d.finding_id,
+                        "agent_name": d.agent_name,
+                        "message_type": d.message_type,
+                        "position": d.position,
+                        "final_decision": d.final_decision,
+                        "content": d.content,
+                        "file_context": d.file_context,
+                        "evidence": d.evidence,
+                        "source_reference": d.source_reference,
+                        "round_number": d.round_number,
+                        "is_verified": d.is_verified,
+                        "created_at": d.created_at,
+                        "updated_at": d.updated_at,
+                    }
+                    for d in f_discs
+                ],
+            })
+
+        # Calculate metrics
+        states_count: Dict[str, int] = {}
+        for f in review.findings:
+            st = f.discussion_state or "Accepted"
+            states_count[st] = states_count.get(st, 0) + 1
+
+        total_findings = len(review.findings)
+        accepted_count = states_count.get("Accepted", 0)
+        consensus_rate = round((accepted_count / total_findings * 100), 1) if total_findings > 0 else 100.0
+
+        return {
+            "review_id": review.id,
+            "pull_request_id": review.pull_request_id,
+            "commit_sha": review.commit_sha,
+            "status": review.status,
+            "total_rounds": max_round,
+            "discussion_threads": threads,
+            "general_discussions": [
+                {
+                    "id": d.id,
+                    "review_id": d.review_id,
+                    "agent_name": d.agent_name,
+                    "message_type": d.message_type,
+                    "position": d.position,
+                    "content": d.content,
+                    "evidence": d.evidence,
+                    "round_number": d.round_number,
+                    "is_verified": d.is_verified,
+                    "created_at": d.created_at,
+                }
+                for d in general_discussions
+            ],
+            "agents": [
+                {
+                    "id": a.id,
+                    "review_id": a.review_id,
+                    "agent_name": a.agent_name,
+                    "role": a.role,
+                    "status": a.status,
+                    "model_name": a.model_name,
+                    "reasoning_summary": a.reasoning_summary,
+                    "confidence_score": a.confidence_score or 0.95,
+                    "findings_count": a.findings_count,
+                    "execution_time_ms": a.execution_time_ms,
+                    "created_at": a.created_at,
+                    "updated_at": a.updated_at,
+                }
+                for a in review.agents
+            ],
+            "summary_metrics": {
+                "total_rounds": max_round,
+                "total_findings": total_findings,
+                "accepted_count": accepted_count,
+                "rejected_count": states_count.get("Rejected", 0),
+                "needs_investigation_count": states_count.get("Needs investigation", 0),
+                "duplicate_count": states_count.get("Duplicate", 0),
+                "uncertain_count": states_count.get("Uncertain", 0),
+                "consensus_rate": consensus_rate,
+            },
+        }
+

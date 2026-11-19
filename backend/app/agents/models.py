@@ -72,6 +72,20 @@ class AgentDiscussion(Base, UUIDMixin, TimestampMixin):
     )  # proposal, critique, verification, consensus, dissent
     content: Mapped[str] = mapped_column(Text, nullable=False)
     file_context: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    evidence: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_reference: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    position: Mapped[str] = mapped_column(
+        String(50),
+        default="proposal",
+        nullable=False,
+        index=True,
+    )  # proposal, challenge, rebuttal, context_supply, verdict, concession
+    final_decision: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+    )  # Accepted, Rejected, Needs investigation, Duplicate, Uncertain
+    round_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships

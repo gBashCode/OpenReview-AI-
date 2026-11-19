@@ -77,14 +77,33 @@ class VerifiedFinding(BaseModel):
     """Final finding verified against repository source code, execution paths, and evidence."""
 
     finding: FindingProposal = Field(description="The underlying finding proposal")
-    status: Literal["verified", "uncertain", "rejected"] = Field(
-        default="verified",
-        description="Final verification verdict"
+    status: Literal[
+        "Accepted",
+        "Rejected",
+        "Needs investigation",
+        "Duplicate",
+        "Uncertain",
+        "verified",
+        "rejected",
+        "uncertain",
+    ] = Field(
+        default="Accepted",
+        description="Final conference discussion state and verification verdict"
     )
     verification_reason: str = Field(description="Evidence or justification for verification decision")
     confidence_score: float = Field(default=0.95, ge=0.0, le=1.0, description="Calibrated confidence score")
     is_reproducible: bool = Field(default=True, description="Whether the issue is directly reproducible in code")
     execution_path_checked: bool = Field(default=True, description="Whether execution reachability was validated")
+
+    @property
+    def canonical_state(self) -> str:
+        """Returns normalized discussion state conforming to conference requirements."""
+        mapping = {
+            "verified": "Accepted",
+            "rejected": "Rejected",
+            "uncertain": "Uncertain",
+        }
+        return mapping.get(self.status, self.status)
 
 
 class VerificationOutput(BaseModel):
@@ -115,6 +134,15 @@ class DiscussionItem(BaseModel):
     message_type: Literal["proposal", "critique", "verification", "consensus", "dissent"] = "proposal"
     content: str
     file_context: Optional[str] = None
+    evidence: Optional[str] = None
+    source_reference: Optional[str] = None
+    position: Literal[
+        "proposal", "challenge", "rebuttal", "context_supply", "verdict", "concession"
+    ] = "proposal"
+    final_decision: Optional[
+        Literal["Accepted", "Rejected", "Needs investigation", "Duplicate", "Uncertain"]
+    ] = None
+    round_number: int = 1
     is_verified: bool = False
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

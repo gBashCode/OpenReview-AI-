@@ -344,7 +344,7 @@ async def test_agent8_verification_agent_consensus(mock_gateway, sample_initial_
 
     assert len(res["verified_findings"]) >= 1
     vf = res["verified_findings"][0]
-    assert vf.status in ("verified", "uncertain", "rejected")
+    assert vf.status in ("Accepted", "verified", "uncertain", "rejected")
     assert vf.confidence_score > 0.0
     assert len(res["agent_discussions"]) >= 1
     assert res["agent_execution_logs"][0].status == "completed"

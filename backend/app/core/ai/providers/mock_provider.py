@@ -10,6 +10,7 @@ from app.core.ai.base import (
     BaseLLMProvider,
     LLMMessage,
     LLMResponse,
+    MessageRole,
     ModelConfig,
     ProviderHealthStatus,
     StructuredLLMResponse,
@@ -101,8 +102,18 @@ class MockLLMProvider(BaseLLMProvider):
         model = (config and config.model) or self.default_model
 
         # Build valid dummy data matching the Pydantic schema if not provided
-        payload_dict = dict(self.structured_response_data)
+        payload_dict = {}
+        # Only use structured_response_data if its keys match the response_model
+        if self.structured_response_data:
+            common_keys = set(self.structured_response_data.keys()).intersection(response_model.model_fields.keys())
+            if common_keys:
+                payload_dict = dict(self.structured_response_data)
+
         if not payload_dict:
+            import re
+            user_content = " ".join(m.content for m in messages if m.role == MessageRole.USER)
+            found_bracket_ids = re.findall(r"\[([a-zA-Z0-9_-]+)\]", user_content)
+
             model_name = getattr(response_model, "__name__", "")
             if model_name == "AgentFindingList":
                 payload_dict = {
@@ -126,25 +137,28 @@ class MockLLMProvider(BaseLLMProvider):
                     "reasoning_summary": "Mock specialist analysis completed.",
                 }
             elif model_name == "Reviewer2Output":
+                target_ids = found_bracket_ids or ["mock-finding-1"]
                 payload_dict = {
                     "critiques": [
                         {
-                            "finding_id": "mock-finding-1",
-                            "finding_title": "Mock detected finding",
-                            "is_supported": True,
-                            "challenge_reason": "Code evidence supports this claim in auth routine.",
-                            "suggested_action": "approve",
+                            "finding_id": fid,
+                            "finding_title": "Challenged Claim",
+                            "is_supported": False,
+                            "challenge_reason": "Claimed vulnerability lacks execution reachability in context.",
+                            "suggested_action": "reject",
                         }
+                        for fid in target_ids[:5]
                     ],
                     "missed_scenarios": ["Verify concurrent token expiration under load"],
                     "reasoning_summary": "Mock adversarial evaluation completed.",
                 }
             elif model_name == "VerificationOutput":
+                target_id = found_bracket_ids[0] if found_bracket_ids else "mock-finding-1"
                 payload_dict = {
                     "verified_findings": [
                         {
                             "finding": {
-                                "id": "mock-finding-1",
+                                "id": target_id,
                                 "file_path": "app/auth.py",
                                 "line_number": 12,
                                 "end_line_number": 14,
@@ -157,7 +171,7 @@ class MockLLMProvider(BaseLLMProvider):
                                 "agent_name": "Security Sentinel",
                                 "confidence_score": 0.98,
                             },
-                            "status": "verified",
+                            "status": "Accepted",
                             "verification_reason": "Execution reachability confirmed in diff.",
                             "confidence_score": 0.98,
                             "is_reproducible": True,
@@ -166,6 +180,36 @@ class MockLLMProvider(BaseLLMProvider):
                     ],
                     "reasoning_summary": "Mock verification arbiter completed.",
                     "consensus_notes": "Consensus reached on high priority security item.",
+                }
+            elif model_name == "SpecialistRebuttal":
+                target_id = found_bracket_ids[0] if found_bracket_ids else "mock-finding-1"
+                is_speculative = (
+                    "unsupported" in user_content.lower()
+                    or "speculative" in user_content.lower()
+                    or "theoretical" in user_content.lower()
+                )
+                if is_speculative:
+                    payload_dict = {
+                        "finding_id": target_id,
+                        "position": "concession",
+                        "arguments": "I cannot provide concrete code evidence from the diff; this was a speculative observation.",
+                        "code_evidence": None,
+                        "requires_surrounding_context": False,
+                    }
+                else:
+                    payload_dict = {
+                        "finding_id": target_id,
+                        "position": "rebuttal",
+                        "arguments": "Concrete dataflow trace verifies unescaped input parameter reaches SQL execution.",
+                        "code_evidence": "sql = f'UPDATE orders SET paid=1 WHERE id={order_id}'",
+                        "requires_surrounding_context": True,
+                    }
+            elif model_name == "ContextSupplyResponse":
+                target_id = found_bracket_ids[0] if found_bracket_ids else "mock-finding-1"
+                payload_dict = {
+                    "finding_id": target_id,
+                    "source_context": "def process_payment(order_id, amount):\n    return db.execute(sql)",
+                    "relevance_explanation": "Direct invocation path without intermediate escaping confirmed in AST.",
                 }
             elif model_name == "PRContextSummary":
                 payload_dict = {

@@ -25,6 +25,7 @@ from app.agents.specialists import (
 )
 from app.core.ai.gateway import ModelGateway
 from app.core.logging import get_logger
+from app.orchestration.conference import ConferenceEngine
 from app.orchestration.registry import AgentMetadata, get_agent_registry
 from app.orchestration.state import (
     AgentLogEntry,
@@ -53,7 +54,8 @@ def calculate_review_scores(verified_findings: List[VerifiedFinding]) -> Dict[st
     quality_deductions = 0.0
 
     for vf in verified_findings:
-        if vf.status != "verified":
+        canonical = getattr(vf, "canonical_state", vf.status)
+        if canonical != "Accepted":
             continue
         penalty = severity_penalties.get(vf.finding.severity, 5.0)
         overall -= penalty
@@ -80,9 +82,11 @@ def generate_markdown_summary(
     verified_findings: List[VerifiedFinding],
 ) -> str:
     """Renders a rich executive markdown summary of the multi-agent code review pass."""
-    total_findings = len([vf for vf in verified_findings if vf.status == "verified"])
-    uncertain_count = len([vf for vf in verified_findings if vf.status == "uncertain"])
-    rejected_count = len([vf for vf in verified_findings if vf.status == "rejected"])
+    accepted_count = len([vf for vf in verified_findings if getattr(vf, "canonical_state", vf.status) == "Accepted"])
+    rejected_count = len([vf for vf in verified_findings if getattr(vf, "canonical_state", vf.status) == "Rejected"])
+    investigation_count = len([vf for vf in verified_findings if getattr(vf, "canonical_state", vf.status) == "Needs investigation"])
+    duplicate_count = len([vf for vf in verified_findings if getattr(vf, "canonical_state", vf.status) == "Duplicate"])
+    uncertain_count = len([vf for vf in verified_findings if getattr(vf, "canonical_state", vf.status) == "Uncertain"])
 
     score_badge = (
         "🟢 PASS" if scores["overall_score"] >= 80 else
@@ -101,13 +105,17 @@ def generate_markdown_summary(
         f"- **Performance Health:** **{scores['performance_score']} / 100**",
         f"- **Code & Test Quality:** **{scores['quality_score']} / 100**",
         "",
-        f"**Verified Issues:** {total_findings} | **Uncertain Findings:** {uncertain_count} | **Rejected (False Positives):** {rejected_count}",
+        (
+            f"**Accepted:** {accepted_count} | **Rejected (False Positives):** {rejected_count} | "
+            f"**Needs Investigation:** {investigation_count} | **Duplicates:** {duplicate_count} | "
+            f"**Uncertain:** {uncertain_count}"
+        ),
         "",
         "---",
         "### 🛡️ Verified Actionable Findings",
     ]
 
-    actionable = [vf for vf in verified_findings if vf.status == "verified"]
+    actionable = [vf for vf in verified_findings if getattr(vf, "canonical_state", vf.status) == "Accepted"]
     if not actionable:
         summary_lines.append("\n✅ **No critical defects or security vulnerabilities detected in these changes.**\n")
     else:
@@ -129,16 +137,12 @@ def generate_markdown_summary(
     summary_lines.extend([
         "",
         "---",
-        "### 🏛️ Multi-Agent Council & Inter-Agent Conference",
-        "The review was conducted autonomously with cross-examination by:",
-        "- **Context Agent**: Repository AST & diff analysis",
-        "- **Bug Hunter**: Functional correctness & logic checks",
-        "- **Security Sentinel**: OWASP Top 10 & CWE vulnerability analysis",
-        "- **Performance Guardian**: Algorithmic complexity & DB efficiency",
-        "- **Architecture Specialist**: Clean architecture & separation of concerns",
-        "- **Test Guardian**: Test coverage & regression risk evaluation",
+        "### 🏛️ Multi-Agent Council & Conference Deliberation",
+        "Findings were deliberated across the multi-agent council with challenge, rebuttal, and evidence verification:",
+        "- **Context Agent**: Source context extraction & caller traces",
+        "- **Specialist Council**: Bug Hunter, Security Sentinel, Performance Guardian, Architecture, Test",
         "- **Reviewer 2**: Adversarial challenge & evidence verification",
-        "- **Verification Arbiter**: Final consensus judge & reachability audit",
+        "- **Verification Arbiter**: Grounded evidence standards & final consensus decisions",
     ])
 
     return "\n".join(summary_lines)
@@ -287,9 +291,12 @@ class ReviewWorkflowBuilder:
         for s_node in specialist_nodes:
             builder.add_edge(s_node, "reviewer2_node")
 
-        # Step 4: Add Verification Arbiter Node
-        verification_agent = registry.get("verification arbiter")
-        builder.add_node("verification_node", verification_agent.execute)
+        # Step 4: Add Verification Arbiter & Conference Deliberation Node
+        conference_engine = ConferenceEngine(self.gateway, max_rounds=2)
+        async def run_conference_node(state: ReviewState) -> Dict[str, Any]:
+            return await conference_engine.run_conference(state)
+
+        builder.add_node("verification_node", run_conference_node)
         builder.add_edge("reviewer2_node", "verification_node")
 
         # Step 5: Add Finalize Review Node
