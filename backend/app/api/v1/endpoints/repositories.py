@@ -141,13 +141,20 @@ async def list_repository_indexes(
     status_code=status.HTTP_201_CREATED,
     summary="Trigger semantic code indexing and symbol extraction",
 )
+@router.post(
+    "/{repository_id}/index",
+    response_model=RepositoryIndexRead,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 async def trigger_indexing(
     repository_id: str,
-    payload: RepositoryIndexCreate,
+    payload: Optional[RepositoryIndexCreate] = None,
     index_service: IndexingService = Depends(get_index_service),
 ) -> RepositoryIndexRead:
-    payload.repository_id = repository_id
-    index_record = await index_service.trigger_index(payload)
+    body = payload or RepositoryIndexCreate(repository_id=repository_id, commit_sha="HEAD")
+    body.repository_id = repository_id
+    index_record = await index_service.trigger_index(body)
     return RepositoryIndexRead.model_validate(index_record)
 
 

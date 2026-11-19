@@ -121,8 +121,7 @@ class AutofixService:
         )
         self.session.add(test_run)
         await self.session.commit()
-        await self.session.refresh(patch)
-        return patch
+        return await self.get_by_id(patch.id)
 
     async def generate_autofix_for_finding(
         self,
@@ -196,8 +195,7 @@ class AutofixService:
             self.session.add(test_run)
 
         await self.session.commit()
-        await self.session.refresh(patch)
-        return patch
+        return await self.get_by_id(patch.id)
 
     async def get_preview(self, patch_id: str) -> PatchPreviewResponse:
         """Returns side-by-side code preview and diff."""
@@ -259,8 +257,7 @@ class AutofixService:
             patch.rejection_reason = decision_req.rejection_reason
 
         await self.session.commit()
-        await self.session.refresh(patch)
-        return patch
+        return await self.get_by_id(patch.id)
 
     async def approve_and_commit(
         self,
@@ -285,9 +282,7 @@ class AutofixService:
             patch.finding.is_resolved = True
 
         await self.session.commit()
-        await self.session.refresh(patch)
-        logger.info(f"Patch {patch_id} committed as {commit_sha} to {branch}.")
-        return patch
+        return await self.get_by_id(patch.id)
 
     async def approve_and_create_pr(
         self,
@@ -311,10 +306,7 @@ class AutofixService:
             patch.finding.is_resolved = True
 
         await self.session.commit()
-        await self.session.refresh(patch)
-        logger.info(f"Created fix PR for patch {patch_id}: {pr_url}")
-        return patch
-
+        return await self.get_by_id(patch.id)
     async def rollback_patch(
         self,
         patch_id: str,
@@ -332,6 +324,4 @@ class AutofixService:
             patch.finding.is_resolved = False
 
         await self.session.commit()
-        await self.session.refresh(patch)
-        logger.info(f"Patch {patch_id} rolled back.")
-        return patch
+        return await self.get_by_id(patch.id)

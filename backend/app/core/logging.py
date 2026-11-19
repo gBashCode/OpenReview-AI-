@@ -6,27 +6,47 @@ in development, with context/correlation ID propagation.
 
 import json
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+SENSITIVE_PATTERNS = [
+    (re.compile(r"Bearer\s+([a-zA-Z0-9_\-\.]{10,})", re.IGNORECASE), "Bearer [REDACTED]"),
+    (re.compile(r"gh[pousr]_[a-zA-Z0-9]{30,}", re.IGNORECASE), "[REDACTED_GITHUB_TOKEN]"),
+    (re.compile(r"sk-[a-zA-Z0-9_\-]{20,}", re.IGNORECASE), "[REDACTED_API_KEY]"),
+    (re.compile(r"password=([^\s&]+)", re.IGNORECASE), "password=[REDACTED]"),
+    (re.compile(r'"password":\s*"([^"]+)"', re.IGNORECASE), '"password": "[REDACTED]"'),
+]
+
+
+def scrub_sensitive_text(text: str) -> str:
+    """Masks authorization tokens, API keys, and passwords from log strings."""
+    if not text:
+        return text
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
 
 class JSONFormatter(logging.Formatter):
-    """Formats log records as single-line JSON objects."""
+    """Formats log records as single-line JSON objects with sensitive data scrubbing."""
 
     def format(self, record: logging.LogRecord) -> str:
+        msg = scrub_sensitive_text(record.getMessage())
         log_data: Dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": msg,
             "module": record.module,
             "line": record.lineno,
         }
 
         # Include exception info if present
         if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
+            exc_str = scrub_sensitive_text(self.formatException(record.exc_info))
+            log_data["exception"] = exc_str
 
         # Include custom extra fields if available
         if hasattr(record, "request_id"):

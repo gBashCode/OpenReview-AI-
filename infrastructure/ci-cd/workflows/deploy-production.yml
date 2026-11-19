@@ -1,0 +1,169 @@
+name: CD - Deploy to Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      confirm_production_deploy:
+        description: "Type 'DEPLOY' to confirm production rollout"
+        required: true
+        default: ""
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # 1. Pre-Deployment Database Backup & Gate
+  # ============================================================================
+  pre-deploy-backup:
+    name: Create Pre-Rollout Database Backup
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate Confirmation
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ github.event.inputs.confirm_production_deploy }}" != "DEPLOY" ]; then
+            echo "Deployment cancelled: Confirmation token mismatched."
+            exit 1
+          fi
+
+      - name: Trigger Automated PostgreSQL Backup
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/openreview
+            bash infrastructure/scripts/backup-postgres.sh
+
+  # ============================================================================
+  # 2. Production Database Migrations
+  # ============================================================================
+  migrate-prod-db:
+    name: Run Production Alembic Migrations
+    needs: [pre-deploy-backup]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: pip install alembic asyncpg sqlalchemy greenlet pydantic-settings
+
+      - name: Execute Alembic Upgrade Head
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          PYTHONPATH: backend
+        run: |
+          alembic -c backend/alembic.ini upgrade head
+
+  # ============================================================================
+  # 3. Zero-Downtime Backend & Worker Rolling Update
+  # ============================================================================
+  deploy-backend-prod:
+    name: Zero-Downtime Backend & Workers Update
+    needs: [migrate-prod-db]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Execute Rolling Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/openreview
+            git fetch --tags
+            git checkout ${{ github.ref_name }}
+            
+            # Pull verified production images
+            docker compose -f docker-compose.prod.yml pull
+            
+            # Rolling restart backend services
+            docker compose -f docker-compose.prod.yml up -d --no-deps --scale backend=2 --no-recreate backend
+            sleep 10
+            
+            # Verify health of new instances before cutting over
+            if ! curl -sf http://127.0.0.1:8000/api/v1/health > /dev/null; then
+              echo "CRITICAL: Healthcheck failed on new backend instances. Initiating automatic rollback!"
+              docker compose -f docker-compose.prod.yml rollback
+              exit 1
+            fi
+            
+            # Restart Celery workers with new code
+            docker compose -f docker-compose.prod.yml up -d --no-deps worker-reviews worker-indexing worker-autofix worker-publishing worker-beat
+            
+            # Reload NGINX gracefully
+            docker exec openreview-prod-nginx nginx -s reload
+            
+            # Prune orphan and dangling containers
+            docker system prune -f
+
+  # ============================================================================
+  # 4. Deploy Frontend to Vercel (Production)
+  # ============================================================================
+  deploy-frontend-prod:
+    name: Deploy React to Vercel Production
+    needs: [deploy-backend-prod]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+
+      - name: Build Production Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: https://api.openreview.ai/api/v1
+          VITE_APP_ENV: production
+
+      - name: Deploy to Vercel Production
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: frontend
+
+  # ============================================================================
+  # 5. Post-Deployment Verification & Smoke Test
+  # ============================================================================
+  post-deploy-smoke-test:
+    name: Production Post-Deployment Health Check
+    needs: [deploy-frontend-prod]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Verify Production Health Endpoint
+        run: |
+          for i in {1..12}; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" https://api.openreview.ai/api/v1/health || true)
+            if [ "$status" -eq 200 ]; then
+              echo "Production API is healthy (HTTP 200)."
+              exit 0
+            fi
+            echo "Waiting for production API health check (attempt $i/12)..."
+            sleep 5
+          done
+          echo "Production API health check timed out."
+          exit 1
