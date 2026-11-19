@@ -21,6 +21,9 @@ from app.core.exceptions import (
     validation_exception_handler,
 )
 from app.core.logging import get_logger, setup_logging
+from app.core.metrics import PrometheusMetricsMiddleware, metrics_registry
+from app.core.sentry import init_sentry
+from app.core.telemetry import init_opentelemetry
 import app.models  # Ensure all 16 models are registered with Base.metadata
 from app.database.base import Base
 from app.database.session import check_db_connectivity, engine
@@ -50,6 +53,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan manager executing startup verification and graceful shutdown."""
     logger.info(f"Starting {settings.APP_NAME} in [{settings.APP_ENV}] mode...")
+
+    # Initialize Observability (Sentry & OpenTelemetry)
+    init_sentry()
+    init_opentelemetry(app)
 
     # For local SQLite development, ensure tables are automatically generated
     if settings.is_sqlite:
@@ -97,6 +104,10 @@ def create_application() -> FastAPI:
     # Context & Tracing middleware
     app.add_middleware(RequestContextMiddleware)
 
+    # Prometheus metrics middleware
+    if settings.PROMETHEUS_METRICS_ENABLED:
+        app.add_middleware(PrometheusMetricsMiddleware)
+
     # Register Exception Handlers
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
@@ -104,6 +115,15 @@ def create_application() -> FastAPI:
 
     # Mount versioned API routes (/api/v1)
     app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX)
+
+    # Metrics scraping endpoint for Prometheus
+    @app.get("/metrics", tags=["Observability"], include_in_schema=False)
+    async def metrics():
+        from fastapi import Response
+        return Response(
+            content=metrics_registry.generate_metrics_text(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     # Root redirect / ping
     @app.get("/", tags=["Root"])

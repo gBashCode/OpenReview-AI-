@@ -1,0 +1,53 @@
+# ==============================================================================
+# OpenReview AI - Prometheus Alerting Rules
+# ==============================================================================
+
+groups:
+  - name: openreview-alerts
+    rules:
+      # 1. High API Error Rate (5xx responses)
+      - alert: HighApiErrorRate
+        expr: >
+          sum(rate(openreview_http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(openreview_http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: backend
+        annotations:
+          summary: "High API HTTP 5xx error rate detected (> 5%)"
+          description: "Over 5% of API requests returned server errors in the last 5 minutes on path {{ $labels.path }}."
+
+      # 2. High API Latency (p95 > 2.0s)
+      - alert: HighP95Latency
+        expr: openreview_http_request_duration_seconds > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          service: backend
+        annotations:
+          summary: "API P95 response latency exceeded 2 seconds"
+          description: "Average latency on endpoint {{ $labels.path }} is {{ $value }}s over 5 minutes."
+
+      # 3. Celery Worker Failures Spike
+      - alert: WorkerTaskFailureSpike
+        expr: sum(rate(openreview_worker_tasks_total{status="failure"}[5m])) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          service: workers
+        annotations:
+          summary: "Celery task failure rate exceeds threshold"
+          description: "Background workers are experiencing repeated failures on queue tasks (task={{ $labels.task }})."
+
+      # 4. LLM Cost Alert
+      - alert: HighLLMCostRate
+        expr: sum(rate(openreview_llm_cost_usd_total[1h])) * 3600 > 50.0
+        for: 10m
+        labels:
+          severity: warning
+          service: ai-models
+        annotations:
+          summary: "AI review agent token consumption rate exceeds $50/hour"
+          description: "Estimated LLM cost rate is currently ${{ $value }}/hr across active agent review passes."

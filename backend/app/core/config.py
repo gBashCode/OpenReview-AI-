@@ -77,10 +77,19 @@ class Settings(BaseSettings):
         return f"postgresql+asyncpg://{user}:{pwd}@{server}:{port}/{db}"
 
     # Database connection pool settings
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
+    DB_PRE_PING: bool = True
     DB_ECHO: bool = False
+
+    # Observability & Metrics
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_ENVIRONMENT: Optional[str] = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.2
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None
+    PROMETHEUS_METRICS_ENABLED: bool = True
 
     # Redis & Background Queues
     REDIS_HOST: str = "localhost"

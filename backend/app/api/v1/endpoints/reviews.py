@@ -7,6 +7,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import AgentDiscussion, ReviewAgent
 from app.agents.schemas import AgentDiscussionCreate, AgentDiscussionRead, ReviewAgentRead
