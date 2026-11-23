@@ -37,6 +37,7 @@ interface AutoFixPatchItem {
   totalTests: number;
   testTimeSeconds: number;
   stdoutLog?: string;
+  prUrl?: string | null;
 }
 
 export const AutoFix: React.FC = () => {
@@ -100,6 +101,7 @@ export const AutoFix: React.FC = () => {
         totalTests: tr?.total_tests ?? 14,
         testTimeSeconds: tr?.execution_time_seconds ?? 1.15,
         stdoutLog: tr?.stdout_log || '14 passed in 1.15s (Zero-Trust Sandbox)',
+        prUrl: p.pr_url || null,
       };
     });
   }, [patches, findingsData]);
@@ -274,6 +276,18 @@ export const AutoFix: React.FC = () => {
             <span>Create PR</span>
           </Button>
 
+          {selectedProposal?.prUrl && (
+            <a
+              href={selectedProposal.prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-[#5a9e6f] bg-[#142017] hover:bg-[#1a2c1f] border border-[#5a9e6f]/40 rounded-[2px] transition-colors"
+            >
+              <GitPullRequest className="w-3.5 h-3.5" />
+              <span>View PR on GitHub ↗</span>
+            </a>
+          )}
+
           <Button
             variant="electric"
             size="sm"
@@ -339,9 +353,16 @@ export const AutoFix: React.FC = () => {
                         {item.category}
                       </span>
                     </div>
-                    <Badge variant="outline" className="text-[9px] py-0 capitalize font-mono">
-                      {item.status}
-                    </Badge>
+                    <div className="flex items-center gap-1">
+                      {item.prUrl && (
+                        <Badge variant="outline" className="text-[9px] py-0 border-[#5a9e6f]/50 text-[#5a9e6f] font-mono">
+                          PR Open
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-[9px] py-0 capitalize font-mono">
+                        {item.status}
+                      </Badge>
+                    </div>
                   </div>
 
                   <h3 className="font-serif text-sm text-[#f5f0e6] mb-1 leading-snug">{item.title}</h3>
