@@ -97,8 +97,15 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_URL: str = "redis://localhost:6379/0"
+    CELERY_ENABLED: bool = False
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+
+    # AutoScaleX Multi-Tier Workload Priority Queues
+    CELERY_QUEUE_FAST: str = "reviews.fast"
+    CELERY_QUEUE_STANDARD: str = "reviews.standard"
+    CELERY_QUEUE_HEAVY: str = "reviews.heavy"
+    CELERY_TASK_DEFAULT_QUEUE: str = "reviews.standard"
 
     # GitHub App
     GITHUB_APP_ID: Optional[str] = None
@@ -142,6 +149,7 @@ class Settings(BaseSettings):
     LLM_TIMEOUT_SECONDS: float = 60.0
     LLM_RETRY_COUNT: int = 3
     LLM_TOKEN_BUDGET: int = 200000
+    LLM_QUOTA_THROTTLE_THRESHOLD: float = 0.85
     LLM_FALLBACK_PROVIDER: Optional[str] = "gemini"
     LLM_FALLBACK_MODEL: Optional[str] = "gemini-3-flash-preview"
 

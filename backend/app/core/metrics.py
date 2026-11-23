@@ -19,6 +19,34 @@ class PrometheusMetricsRegistry:
         self.llm_tokens_total: Dict[str, int] = defaultdict(int)
         self.llm_cost_usd_total: Dict[str, float] = defaultdict(float)
 
+        # AutoScaleX Infrastructure Telemetry
+        self.queue_depths: Dict[str, int] = defaultdict(int, {"fast": 0, "standard": 0, "heavy": 0})
+        self.workload_backlog_score: float = 0.0
+        self.active_workers: Dict[str, int] = defaultdict(int, {"fast": 1, "standard": 2, "heavy": 1})
+        self.token_governor_throttle_events_total: int = 0
+        self.llm_token_burn_rate_rpm: int = 0
+
+    def set_queue_depth(self, tier: str, depth: int):
+        self.queue_depths[tier.lower()] = max(0, depth)
+
+    def get_queue_depth(self, tier: str) -> int:
+        return self.queue_depths.get(tier.lower(), 0)
+
+    def set_workload_backlog_score(self, score: float):
+        self.workload_backlog_score = max(0.0, float(score))
+
+    def set_active_workers(self, tier: str, count: int):
+        self.active_workers[tier.lower()] = max(0, count)
+
+    def get_active_workers(self, tier: str) -> int:
+        return self.active_workers.get(tier.lower(), 0)
+
+    def record_token_throttle(self):
+        self.token_governor_throttle_events_total += 1
+
+    def set_token_burn_rate(self, rpm: int):
+        self.llm_token_burn_rate_rpm = max(0, rpm)
+
     def record_request(self, method: str, path: str, status_code: int, duration_seconds: float):
         key = f'{method}:{path}:{status_code}'
         self.request_counts[key] += 1
@@ -82,6 +110,34 @@ class PrometheusMetricsRegistry:
         for key, cost in self.llm_cost_usd_total.items():
             provider, model = key.split(":")
             lines.append(f'openreview_llm_cost_usd_total{{provider="{provider}",model="{model}"}} {cost:.6f}')
+
+        # 7. AutoScaleX Workload Queue Depths
+        lines.append("# HELP openreview_queue_depth Current queued review count per AutoScaleX tier.")
+        lines.append("# TYPE openreview_queue_depth gauge")
+        for tier in ("fast", "standard", "heavy"):
+            depth = self.queue_depths.get(tier, 0)
+            lines.append(f'openreview_queue_depth{{tier="{tier}"}} {depth}')
+
+        # 8. AutoScaleX Workload Backlog Score
+        lines.append("# HELP openreview_workload_backlog_score Sum of complexity weights of queued reviews.")
+        lines.append("# TYPE openreview_workload_backlog_score gauge")
+        lines.append(f"openreview_workload_backlog_score {self.workload_backlog_score:.2f}")
+
+        # 9. AutoScaleX Active Workers Fleet
+        lines.append("# HELP openreview_active_workers Number of active worker pods/processes per tier.")
+        lines.append("# TYPE openreview_active_workers gauge")
+        for tier in ("fast", "standard", "heavy"):
+            workers = self.active_workers.get(tier, 0)
+            lines.append(f'openreview_active_workers{{tier="{tier}"}} {workers}')
+
+        # 10. AutoScaleX Token Governor Telemetry
+        lines.append("# HELP openreview_token_governor_throttle_events_total Total LLM governor throttle events.")
+        lines.append("# TYPE openreview_token_governor_throttle_events_total counter")
+        lines.append(f"openreview_token_governor_throttle_events_total {self.token_governor_throttle_events_total}")
+
+        lines.append("# HELP openreview_llm_token_burn_rate_rpm Sliding 60-second window LLM token burn rate.")
+        lines.append("# TYPE openreview_llm_token_burn_rate_rpm gauge")
+        lines.append(f"openreview_llm_token_burn_rate_rpm {self.llm_token_burn_rate_rpm}")
 
         return "\n".join(lines) + "\n"
 

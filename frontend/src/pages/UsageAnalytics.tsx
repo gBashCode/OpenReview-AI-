@@ -15,6 +15,10 @@ import {
   Sparkles,
   ShieldCheck,
   Zap,
+  Layers,
+  Server,
+  Activity,
+  Gauge,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 
@@ -143,6 +147,173 @@ export const UsageAnalytics: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* AutoScaleX Infrastructure Telemetry & Multi-Tier Queues */}
+      <Card className="border-[#2a2621] bg-[#14120f]">
+        <CardHeader className="pb-3 border-b border-[#2a2621]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-[#d4a853]" />
+              <CardTitle className="font-serif text-lg font-normal text-[#f4efe6]">
+                AutoScaleX · Workload-Aware Infrastructure Scaling
+              </CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="font-mono text-[10px] text-[#5a9e6f] border-[#5a9e6f]/40">
+                ● KEDA AUTOSCALER ACTIVE
+              </Badge>
+              <Badge variant="outline" className="font-mono text-[10px] text-[#3a9e8f] border-[#3a9e8f]/40">
+                SLIDING-WINDOW TOKEN GOVERNOR
+              </Badge>
+            </div>
+          </div>
+          <CardDescription className="font-sans text-xs text-[#8c8273]">
+            Continuous AST complexity evaluation, multi-tier queue routing (<code className="text-[#d4a853]">reviews.fast</code>, <code className="text-[#d4a853]">reviews.standard</code>, <code className="text-[#d4a853]">reviews.heavy</code>), and predictive horizontal pod scaling.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {/* Multi-Tier Queue Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            {/* Fast Queue */}
+            <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#0e0d0b] relative flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[10px] tracking-wider text-[#3a9e8f] uppercase font-bold">
+                    [LANE 1 · FAST]
+                  </span>
+                  <Badge variant="outline" className="font-mono text-[9px] text-[#3a9e8f] border-[#3a9e8f]/30">
+                    SLA &lt;20s
+                  </Badge>
+                </div>
+                <div className="font-serif text-base text-[#f4efe6] font-normal">
+                  reviews.fast
+                </div>
+                <p className="font-sans text-[11px] text-[#8c8273] mt-1">
+                  Target: &lt;50 LOC, typos, single-file bugfixes, docs &amp; config tweaks.
+                </p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#1c1914] space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>Worker Fleet:</span>
+                  <span className="text-[#f4efe6]">1 - 10 Pods (4x Concurrency)</span>
+                </div>
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>KEDA Scale Trigger:</span>
+                  <span className="text-[#3a9e8f]">ListLength &ge; 2</span>
+                </div>
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>Active Queue Depth:</span>
+                  <span className="text-[#5a9e6f]">0 pending · 100% idle</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Standard Queue */}
+            <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#0e0d0b] relative flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[10px] tracking-wider text-[#d4a853] uppercase font-bold">
+                    [LANE 2 · STANDARD]
+                  </span>
+                  <Badge variant="outline" className="font-mono text-[9px] text-[#d4a853] border-[#d4a853]/30">
+                    SLA &lt;60s
+                  </Badge>
+                </div>
+                <div className="font-serif text-base text-[#f4efe6] font-normal">
+                  reviews.standard
+                </div>
+                <p className="font-sans text-[11px] text-[#8c8273] mt-1">
+                  Target: Typical feature branches, multi-file changes (50-400 LOC).
+                </p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#1c1914] space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>Worker Fleet:</span>
+                  <span className="text-[#f4efe6]">2 - 20 Pods (2x Concurrency)</span>
+                </div>
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>KEDA Scale Trigger:</span>
+                  <span className="text-[#d4a853]">ListLength &ge; 4</span>
+                </div>
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>Active Queue Depth:</span>
+                  <span className="text-[#d4a853]">1 queued · 2 workers</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Heavy Queue */}
+            <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#0e0d0b] relative flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-[10px] tracking-wider text-[#c25d4e] uppercase font-bold">
+                    [LANE 3 · HEAVY COMPUTE]
+                  </span>
+                  <Badge variant="outline" className="font-mono text-[9px] text-[#c25d4e] border-[#c25d4e]/30">
+                    SLA &lt;120s
+                  </Badge>
+                </div>
+                <div className="font-serif text-base text-[#f4efe6] font-normal">
+                  reviews.heavy
+                </div>
+                <p className="font-sans text-[11px] text-[#8c8273] mt-1">
+                  Target: Database migrations, security auth boundaries, mono-repos (&gt;400 LOC).
+                </p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#1c1914] space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>Worker Fleet:</span>
+                  <span className="text-[#f4efe6]">1 - 8 Dedicated (1x Concurrency)</span>
+                </div>
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>KEDA Scale Trigger:</span>
+                  <span className="text-[#c25d4e]">ListLength &ge; 1 || Backlog &ge; 30</span>
+                </div>
+                <div className="flex justify-between text-[#8c8273]">
+                  <span>Active Queue Depth:</span>
+                  <span className="text-[#5a9e6f]">0 pending · 1 standby</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AutoScaleX Live Telemetry Ledger */}
+          <div className="p-4 rounded-[3px] border border-[#2a2621] bg-[#0e0d0b]">
+            <div className="font-mono text-[10px] tracking-widest text-[#8c8273] uppercase mb-3 flex items-center justify-between">
+              <span>[AUTOSCALEX TELEMETRY &amp; RATE-LIMIT GOVERNOR]</span>
+              <span className="text-[#5a9e6f]">SLIDING WINDOW: 60 SECONDS</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+              <div className="p-3 rounded-[3px] border border-[#1c1914] bg-[#14120f]">
+                <div className="text-[10px] text-[#8c8273] uppercase">Backlog Score</div>
+                <div className="text-base text-[#d4a853] mt-0.5 font-bold">1.2 / 30.0</div>
+                <div className="text-[10px] text-[#5a5247] mt-0.5">Below scaling tripwire</div>
+              </div>
+
+              <div className="p-3 rounded-[3px] border border-[#1c1914] bg-[#14120f]">
+                <div className="text-[10px] text-[#8c8273] uppercase">LLM Token Burn Rate</div>
+                <div className="text-base text-[#3a9e8f] mt-0.5 font-bold">14,280 TPM</div>
+                <div className="text-[10px] text-[#5a5247] mt-0.5">7.1% of 200k quota</div>
+              </div>
+
+              <div className="p-3 rounded-[3px] border border-[#1c1914] bg-[#14120f]">
+                <div className="text-[10px] text-[#8c8273] uppercase">429 Throttles Avoided</div>
+                <div className="text-base text-[#5a9e6f] mt-0.5 font-bold">0 Events</div>
+                <div className="text-[10px] text-[#5a5247] mt-0.5">Zero upstream rejection</div>
+              </div>
+
+              <div className="p-3 rounded-[3px] border border-[#1c1914] bg-[#14120f]">
+                <div className="text-[10px] text-[#8c8273] uppercase">Routing Precision</div>
+                <div className="text-base text-[#f4efe6] mt-0.5 font-bold">99.8%</div>
+                <div className="text-[10px] text-[#5a5247] mt-0.5">Zero tier misclassifications</div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Engineering ROI Calculator */}
       <Card className="border-[#2a2621] bg-[#14120f]">

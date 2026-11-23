@@ -3,6 +3,7 @@
 from typing import Any, Dict, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.analyzer.workload_classifier import workload_classifier
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.github.github_auth_service import GitHubAuthService
@@ -145,19 +146,48 @@ class GitHubPullRequestService:
 
         # 3. Actions that trigger an automated multi-agent code review
         if action in ("opened", "synchronize", "reopened"):
-            logger.info(f"Queuing autonomous code review for PR #{pr_number} [{action}] on {repo_full_name}")
+            # AutoScaleX: Classify workload before dispatching to review fleet
+            workload = workload_classifier.classify(
+                changed_files_count=pr_data.get("changed_files", 1),
+                additions=pr_data.get("additions", 0),
+                deletions=pr_data.get("deletions", 0),
+            )
+            logger.info(
+                f"AutoScaleX classified PR #{pr_number} on {repo_full_name}: "
+                f"tier=[{workload.tier.value.upper()}] score={workload.complexity_score} "
+                f"est_tokens={workload.estimated_tokens} scaling_weight={workload.scaling_weight}"
+            )
+
+            logger.info(f"Queuing autonomous code review for PR #{pr_number} [{action}] on {repo_full_name} via queue [{workload.tier.value}]")
             review = await self.review_service.trigger_review(
                 ReviewCreate(
                     pull_request_id=pr.id,
                     commit_sha=head_sha,
                 )
             )
+
+            # AutoScaleX: Dispatch review task to Celery priority queue or in-process fallback
+            from app.tasks.review_tasks import dispatch_review_task
+            dispatch_info = dispatch_review_task(
+                review_id=review.id,
+                tier=workload.tier.value,
+            )
+
             return {
                 "status": "review_triggered",
                 "action": action,
                 "pull_request_id": pr.id,
                 "review_id": review.id,
                 "head_sha": head_sha,
+                "dispatch": dispatch_info,
+                "workload": {
+                    "tier": workload.tier.value,
+                    "complexity_score": workload.complexity_score,
+                    "estimated_tokens": workload.estimated_tokens,
+                    "recommended_agent_count": workload.recommended_agent_count,
+                    "scaling_weight": workload.scaling_weight,
+                    "timeout_seconds": workload.timeout_seconds,
+                },
             }
 
         elif action == "closed":

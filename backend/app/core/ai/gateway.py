@@ -30,6 +30,69 @@ settings = get_settings()
 T = TypeVar("T", bound=BaseModel)
 
 
+class TokenGovernor:
+    """Sliding-window token rate governor for AutoScaleX.
+
+    Monitors rolling 60-second token consumption against the configured quota.
+    When consumption reaches the throttle threshold (default 85%), it introduces
+    cooperative micro-delays to prevent provider HTTP 429 rate limit errors.
+    """
+
+    def __init__(
+        self,
+        quota_per_minute: int = 200_000,
+        throttle_threshold: float = 0.85,
+        window_seconds: float = 60.0,
+    ):
+        self.quota_per_minute = quota_per_minute
+        self.throttle_threshold = throttle_threshold
+        self.window_seconds = window_seconds
+        self._history: List[tuple] = []
+        self._lock = asyncio.Lock()
+
+    def _prune(self, now: float):
+        cutoff = now - self.window_seconds
+        self._history = [entry for entry in self._history if entry[0] > cutoff]
+
+    def get_current_burn_rate(self) -> int:
+        now = time.time()
+        self._prune(now)
+        return sum(tokens for _, tokens in self._history)
+
+    async def acquire_permit(self, estimated_tokens: int = 1500) -> float:
+        """Evaluates whether current sliding-window consumption requires throttling."""
+        async with self._lock:
+            now = time.time()
+            self._prune(now)
+            current_burn = sum(tokens for _, tokens in self._history)
+            threshold_tokens = self.quota_per_minute * self.throttle_threshold
+
+            if (current_burn + estimated_tokens) > threshold_tokens:
+                overshoot = (current_burn + estimated_tokens) - threshold_tokens
+                delay = min(2.5, max(0.2, (overshoot / self.quota_per_minute) * 2.0))
+                logger.warning(
+                    f"AutoScaleX Token Governor: 60s burn rate ({current_burn} tokens) "
+                    f"nears threshold ({threshold_tokens:.0f}/{self.quota_per_minute}). "
+                    f"Throttling request by {delay:.2f}s."
+                )
+                from app.core.metrics import metrics_registry
+                metrics_registry.record_token_throttle()
+                return delay
+            return 0.0
+
+    def record_usage(self, tokens: int):
+        """Records tokens consumed in the sliding window and updates metrics."""
+        now = time.time()
+        self._history.append((now, tokens))
+        self._prune(now)
+        current_burn = sum(t for _, t in self._history)
+        try:
+            from app.core.metrics import metrics_registry
+            metrics_registry.set_token_burn_rate(current_burn)
+        except Exception:
+            pass
+
+
 class ModelGateway:
     """Enterprise multi-provider AI model gateway with automatic retry policies,
     rate-limit backoff, token budgeting, and multi-model fallback failover.
@@ -44,6 +107,12 @@ class ModelGateway:
         self.primary_name = (primary_provider or settings.DEFAULT_LLM_PROVIDER).lower()
         self.fallback_name = (fallback_provider or settings.LLM_FALLBACK_PROVIDER or "").lower()
         self.token_budget = token_budget or settings.LLM_TOKEN_BUDGET
+
+        # AutoScaleX Token Rate Governor
+        self.governor = TokenGovernor(
+            quota_per_minute=self.token_budget,
+            throttle_threshold=getattr(settings, "LLM_QUOTA_THROTTLE_THRESHOLD", 0.85),
+        )
 
         # Cumulative accounting
         self.total_tokens_consumed = 0
@@ -83,6 +152,12 @@ class ModelGateway:
             timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
             max_retries=settings.LLM_RETRY_COUNT,
         )
+
+        # AutoScaleX: Enforce sliding-window token rate governor
+        est_tokens = sum(len(m.content) // 4 for m in messages) + (cfg.max_tokens or 1000)
+        throttle_delay = await self.governor.acquire_permit(estimated_tokens=est_tokens)
+        if throttle_delay > 0:
+            await asyncio.sleep(throttle_delay)
 
         try:
             response = await self._execute_with_retry(
@@ -139,6 +214,12 @@ class ModelGateway:
             timeout_seconds=settings.LLM_TIMEOUT_SECONDS,
             max_retries=settings.LLM_RETRY_COUNT,
         )
+
+        # AutoScaleX: Enforce sliding-window token rate governor
+        est_tokens = sum(len(m.content) // 4 for m in messages) + (cfg.max_tokens or 1000)
+        throttle_delay = await self.governor.acquire_permit(estimated_tokens=est_tokens)
+        if throttle_delay > 0:
+            await asyncio.sleep(throttle_delay)
 
         try:
             response = await self._execute_with_retry(
@@ -240,9 +321,10 @@ class ModelGateway:
                 await asyncio.sleep(delay)
 
     def _record_usage(self, tokens: int, cost: float):
-        """Tracks token consumption against configured budget."""
+        """Tracks token consumption against configured budget and sliding-window rate governor."""
         self.total_tokens_consumed += tokens
         self.total_cost_accumulated_usd += cost
+        self.governor.record_usage(tokens)
         if self.token_budget and self.total_tokens_consumed > self.token_budget:
             logger.warning(
                 f"Token budget exceeded! Consumed {self.total_tokens_consumed}/{self.token_budget} tokens."
