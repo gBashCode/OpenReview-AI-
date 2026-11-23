@@ -14,11 +14,12 @@ import sqlite3
 def calculate_average(values: Optional[List[int]]) -> float:
     """Calculate the arithmetic mean of a dataset of metrics.
 
-    VULNERABILITY / BUG (High Severity):
-    Passing an empty list `[]` raises ZeroDivisionError.
-    Passing `None` raises TypeError.
+    VULNERABILITY / BUG (High Severity - Remediated):
+    Properly handles empty list `[]` and `None` to prevent ZeroDivisionError.
     """
-    return sum(values) / len(values)
+    if not values:
+        return 0.0
+    return float(sum(values)) / len(values)
 
 
 def fetch_table_records(table_name: str, db_connection: sqlite3.Connection) -> List[Dict[str, Any]]:

@@ -9,16 +9,14 @@ def test_calculate_average_valid():
     assert calculate_average([10, 20, 30]) == 20.0
 
 
-def test_calculate_average_empty_raises():
-    """Demonstrates unhandled ZeroDivisionError in unpatched code."""
-    with pytest.raises(ZeroDivisionError):
-        calculate_average([])
+def test_calculate_average_empty_handled():
+    """Demonstrates safe handling of empty list in patched code."""
+    assert calculate_average([]) == 0.0
 
 
-def test_calculate_average_none_raises():
-    """Demonstrates unhandled TypeError in unpatched code."""
-    with pytest.raises(TypeError):
-        calculate_average(None)
+def test_calculate_average_none_handled():
+    """Demonstrates safe handling of NoneType in patched code."""
+    assert calculate_average(None) == 0.0
 
 
 def test_process_batch_metrics_valid():
