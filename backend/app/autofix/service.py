@@ -300,7 +300,7 @@ class AutofixService:
 
         # Determine target repository
         target_owner = "gBashCode"
-        target_repo = "demo"
+        target_repo = "OpenReview-AI-"
         repo_id = None
 
         if patch.finding and patch.finding.review_id:
@@ -348,7 +348,7 @@ class AutofixService:
                 head_sha=hashlib.sha1(f"{patch.id}:{time.time()}".encode("utf-8")).hexdigest(),
                 base_sha="0000000000000000000000000000000000000000",
                 author_username="openreview-bot",
-                status="open",
+                state="open",
             )
             self.session.add(new_pr)
             patch.pr_url = f"https://github.com/{target_owner}/{target_repo}/pull/{pr_num}"
