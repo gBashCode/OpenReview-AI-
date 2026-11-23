@@ -21,13 +21,17 @@ def calculate_average(values: Optional[List[int]]) -> float:
     return sum(values) / len(values)
 
 
+ALLOWED_AUDIT_TABLES = {"audit_logs", "user_metrics", "system_events"}
+
+
 def fetch_table_records(table_name: str, db_connection: sqlite3.Connection) -> List[Dict[str, Any]]:
     """Retrieve all records for a designated audit table.
 
-    VULNERABILITY (Critical Severity - CWE-89 SQL Injection):
-    Raw f-string interpolation directly concatenates `table_name` into the query
-    without input sanitization or whitelist validation.
+    VULNERABILITY (Critical Severity - CWE-89 SQL Injection - Remediated):
+    Strict identifier validation against permitted table whitelist.
     """
+    if table_name not in ALLOWED_AUDIT_TABLES:
+        raise ValueError(f"Unauthorized or invalid audit table: {table_name}")
     query = f"SELECT * FROM {table_name}"
     cursor = db_connection.cursor()
     cursor.execute(query)

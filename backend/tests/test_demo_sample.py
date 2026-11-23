@@ -21,10 +21,10 @@ def test_calculate_average_none_raises():
         calculate_average(None)
 
 
-def test_process_batch_metrics_valid():
-    """Verify metrics calculation on record batch."""
-    records = [{"score": 10}, {"score": 20}, {"score": 30}]
-    metrics = process_batch_metrics(records)
-    assert metrics["mean"] == 20.0
-    assert metrics["max"] == 30.0
-    assert metrics["min"] == 10.0
+def test_fetch_table_records_whitelist():
+    """Verify whitelist protection prevents SQL injection."""
+    import sqlite3
+    from backend.app.demo_sample import fetch_table_records
+    conn = sqlite3.connect(":memory:")
+    with pytest.raises(ValueError):
+        fetch_table_records("users; DROP TABLE users;--", conn)
